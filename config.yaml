@@ -1,0 +1,14 @@
+session:
+  key: qwerty
+admin:
+  email: admin@admin.com
+  password: admin
+database:
+  host: 0.0.0.0
+  port: 5432
+  user: user
+  password: password
+  database: amigos
+bot:
+  token: group_token
+  group_id: 1
