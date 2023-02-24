@@ -45,6 +45,7 @@ async def error_handling_middleware(request: "Request", handler: callable):
             message=str(e)
         )
     except Exception as e:
+        request.app.logger.error("Exception", exc_info=e)
         return error_json_response(
             http_status=500,
             status=HTTP_ERROR_CODES[500],

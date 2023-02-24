@@ -7,6 +7,7 @@ from aiohttp.web import (
 
 from app.admin.models import Admin
 from app.web.config import Config, setup_config
+from app.web.middlewares import setup_middleware
 
 
 class Application(AiohttpApplication):
@@ -23,6 +24,7 @@ class Request(AiohttpRequest):
 app = Application()
 
 def setup_app(config_path: str) -> Application:
-    setup_config(app, config_path)
+    setup_config(app=app, config_path=config_path)
+    setup_middleware(app=app)
 
     return app
