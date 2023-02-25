@@ -6,18 +6,23 @@ from aiohttp.web import (
     View as AiohttpView,
 )
 
+from aiohttp_apispec import setup_aiohttp_apispec
+from aiohttp_session import setup as session_setup
+from aiohttp_session.cookie_storage import EncryptedCookieStorage
+
 from app.admin.models import Admin
-from app.web.config import Config, setup_config
-from app.web.middlewares import setup_middleware
-from app.web.routes import setup_routes
+from app.store import Store, setup_store
 from app.store.database.database import Database
-from app.store import Store
+from app.web.config import Config, setup_config
+from app.web.middlewares import setup_middlewares
+from app.web.routes import setup_routes
 
 
 class Application(AiohttpApplication):
     config: Optional[Config] = None
+    store: Optional[Store] = None
     database: Optional[Database] = None
-    store: Optional[Store]
+
 
 class Request(AiohttpRequest):
     admin: Optional[Admin] = None
@@ -37,19 +42,21 @@ class View(AiohttpView):
         return self.request.app.database
     
     @property
-    def store(self):
+    def store(self) -> Store:
         return self.request.app.store
     
     @property
-    def data(self):
+    def data(self) -> dict:
         return self.request.get("data", {})
 
 
 app = Application()
 
 def setup_app(config_path: str) -> Application:
-    setup_config(app=app, config_path=config_path)
-    setup_routes(app=app)
-    setup_middleware(app=app)
-
+    setup_config(app, config_path)
+    session_setup(app, EncryptedCookieStorage(app.config.session.key))
+    setup_routes(app)
+    setup_aiohttp_apispec(app, title="VK bot", url="/docs/json", swagger_path="/docs")
+    setup_middlewares(app)
+    setup_store(app)
     return app

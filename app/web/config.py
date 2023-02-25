@@ -1,6 +1,7 @@
 import typing
-import yaml
 from dataclasses import dataclass
+
+import yaml
 
 if typing.TYPE_CHECKING:
     from app.web.app import Application
@@ -45,17 +46,16 @@ def setup_config(app: "Application", config_path: str):
         raw_config = yaml.safe_load(f)
     
     app.config = Config(
+        session=SessionConfig(
+            key=raw_config["session"]["key"],
+        ),
         admin=AdminConfig(
             email=raw_config["admin"]["email"],
             password=raw_config["admin"]["password"],
-        ),
-        session=SessionConfig(
-            key=raw_config["session"]["key"],
         ),
         bot=BotConfig(
             token=raw_config["bot"]["token"],
             group_id=raw_config["bot"]["group_id"],
         ),
-        database=DatabaseConfig(*raw_config["database"])
-
+        database=DatabaseConfig(**raw_config["database"]),
     )

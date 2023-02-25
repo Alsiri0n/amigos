@@ -1,14 +1,18 @@
+user_token: OTY3NmVjYWYtZTJhNC00NzNhLTgwM2YtZGY3OTBkYTM3YWFhXzQ2OTk=
+
 session:
-  key: qwerty
+  key: CaY5iCkYtN7DqXdiYK1BvmGrQuaSA4Tl4bEk9my0jc0=
 admin:
   email: admin@admin.com
   password: admin
 database:
-  host: 0.0.0.0
+  host: 192.168.1.46
   port: 5432
-  user: user
-  password: password
-  database: amigos
+  user: gitea
+  password: 3ZNrwkGCC4PWo5gEa0fm
+  database: kts
 bot:
-  token: group_token
-  group_id: 1
+  token: vk1.a.lNJZdDhhowypCppAo0xqGrnOf-UcuAAB_gr3I0Wmfkq2xD5gKNL0exTAbYDNc7PJ1UZFbn8CFLnkA8TKNQAZgRAAx-jc0GFFeCKrK20uaEnWo4b1-pBB1lvC0KR0bZDWC0ny6SJplZib-4_d1kXx8ftVNCLvy2q5kKi6DV0Q1QbxbF74QtF7OMpBzEhov8ky3Z6MeClipJ09DlR-BScoiQ
+  group_id: 28124699
+
+

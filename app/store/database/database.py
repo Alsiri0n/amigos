@@ -1,15 +1,13 @@
-from typing import TYPE_CHECKING, Optional
+from typing import Optional, TYPE_CHECKING
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from app.store.database import db
 
-
 if TYPE_CHECKING:
     from app.web.app import Application
-
-
 
 
 class Database:
@@ -21,9 +19,9 @@ class Database:
 
     async def connect(self, *_: list, **__: dict) -> None:
         self._db = db
-        database_url = f"postgresql+asyncpg"
+        database_url = f"postgresql+asyncpg://{self.app.config.database.user}:{self.app.config.database.password}@{self.app.config.database.host}:{self.app.config.database.port}/{self.app.config.database.database}"
         self._engine = create_async_engine(database_url, echo=True, future=True)
-        self.session = sessionmaker(self._engine, class_=AsyncEngine, expire_on_commit=False)
+        self.session = sessionmaker(self._engine, class_=AsyncSession, expire_on_commit=False)
 
     async def disconnect(self, *_: list, **__: dict) -> None:
         if self._engine:

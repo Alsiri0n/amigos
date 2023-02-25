@@ -1,9 +1,11 @@
 from dataclasses import dataclass
+from hashlib import sha256
 from typing import Optional
+
 from sqlalchemy import Column, BigInteger, Text
 
-
 from app.store.database.sqlalchemy_base import db
+
 
 @dataclass
 class Admin:
@@ -12,11 +14,11 @@ class Admin:
     password: Optional[str] = None
 
     def is_password_valid(self, password: str):
-        pass
+        return self.password == sha256(password.encode()).hexdigest()
 
     @classmethod
-    def from_method(cls, session:Optional[dict]) -> Optional["Admin"]:
-        pass
+    def from_session(cls, session: Optional[dict]) -> Optional["Admin"]:
+        return cls(id=session["admin"]["id"], email=session["admin"]["email"])
 
 
 class AdminModel(db):
