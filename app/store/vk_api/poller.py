@@ -10,11 +10,11 @@ class Poller:
         self.store = store
         self.is_running = False
         self.poll_task: Optional[Task] = None
-        self.queue = asyncio.Queue
+        self.queue = asyncio.Queue()
 
     async def start(self):
         self.is_running = True
-        self.poll_task = asyncio.create_task(self.poll)
+        self.poll_task = asyncio.create_task(self.poll())
 
     async def stop(self):
         self.is_running = False

@@ -5,7 +5,9 @@ from dataclasses import dataclass
 class UpdateObject:
     id: int
     user_id: int
-    body: str
+    text: str
+    peer_id: int
+    # chat_id: int
 
 
 @dataclass
@@ -16,5 +18,7 @@ class Update:
 
 @dataclass
 class Message:
-    user_id: int
+    # user_id: int
     text: str
+    keyboard: str
+    peer_id: int

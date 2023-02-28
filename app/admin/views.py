@@ -15,7 +15,7 @@ class AdminLoginView(View):
         admin = await self.request.app.store.admins.get_by_email(data["email"])
         if not admin or admin.is_password_valid(admin.password):
             raise HTTPForbidden
-        session = new_session(request=self.request)
+        session = await new_session(request=self.request)
         session["admin"] = AdminSchema().dump(admin)
         return json_response(data=AdminSchema().dump(admin))
 
@@ -24,7 +24,7 @@ class AdminCurrentView(View):
     @response_schema(AdminSchema, 200)
     async def get(self):
         try:
-            admin = self.request.admin
-            return json_response(data=AdminSchema().dump(admin))
+            user = self.request.admin
+            return json_response(data=AdminSchema().dump(user))
         except AttributeError as e:
             raise HTTPUnauthorized

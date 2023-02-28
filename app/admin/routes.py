@@ -1,10 +1,11 @@
 from typing import TYPE_CHECKING
 
-
-
 if TYPE_CHECKING:
     from app.web.app import Application
 
 
 def setup_routes(app: "Application"):
-    pass
+    from app.admin.views import AdminLoginView, AdminCurrentView
+
+    app.router.add_view("/admin.login", AdminLoginView)
+    app.router.add_view("/admin.current", AdminCurrentView)

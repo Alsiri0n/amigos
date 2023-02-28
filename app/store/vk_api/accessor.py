@@ -1,4 +1,5 @@
 import typing
+import json
 import random
 from typing import Optional
 
@@ -12,7 +13,7 @@ from app.store.vk_api.poller import Poller
 if typing.TYPE_CHECKING:
     from app.web.app import Application
 
-API_PATH = "https://api.vk.com/method"
+API_PATH = "https://api.vk.com/method/"
 
 
 class VkApiAccessor(BaseAccessor):
@@ -25,7 +26,7 @@ class VkApiAccessor(BaseAccessor):
         self.ts: Optional[int] = None
 
     async def connect(self, app: "Application") -> None:
-        self.session = ClientSession(connector=TCPConnector(verify_ssl=True))
+        self.session = ClientSession(connector=TCPConnector(verify_ssl=False))
         try:
             await self._get_long_poll_service()
         except Exception as e:
@@ -41,7 +42,7 @@ class VkApiAccessor(BaseAccessor):
             await self.poller.stop()
 
     @staticmethod
-    async def _build_query(host: str, method: str, params: dict) -> str:
+    def _build_query(host: str, method: str, params: dict) -> str:
         url = host + method + "?"
         if "v" not in params:
             params["v"] = "5.131"
@@ -58,13 +59,13 @@ class VkApiAccessor(BaseAccessor):
                     "access_token": self.app.config.bot.token,
                     },
                 )
-            ) as resp:
-                data = (await resp.json())["response"]
-                self.logger.info(data)
-                self.key = data["key"]
-                self.server = data["server"]
-                self.ts = data["ts"]
-                self.logger.info(self.server)
+        ) as resp:
+            data = (await resp.json())["response"]
+            self.logger.info(data)
+            self.key = data["key"]
+            self.server = data["server"]
+            self.ts = data["ts"]
+            self.logger.info(self.server)
     
     async def poll(self) -> None:
         async with self.session.get(
@@ -89,9 +90,11 @@ class VkApiAccessor(BaseAccessor):
                     Update(
                         type=update["type"],
                         object=UpdateObject(
-                            id=update["object"]["id"],
-                            user_id=update["object"]["user_id"],
-                            body=update["object"]["body"],
+                            id=update["object"]["message"]["id"],
+                            user_id=update["object"]["message"]["from_id"],
+                            text=update["object"]["message"]["text"],
+                            # peer_id=int(update["object"]["message"]["peer_id"]) - 2000000000,
+                            peer_id=int(update["object"]["message"]["peer_id"])
                         ),
                     )
                 )
@@ -103,11 +106,12 @@ class VkApiAccessor(BaseAccessor):
                 host=API_PATH,
                 method="messages.send",
                 params={
-                    "user_id": message.user_id,
+                    # "user_id": message.user_id,
                     "random_id": random.randint(1,  2 ** 32),
-                    "peer_id": f"-{self.app.config.bot.group_id}",
+                    "peer_id": message.peer_id,
                     "message": message.text,
-                    "access_token": self.app.config.bot.token
+                    "access_token": self.app.config.bot.token,
+                    "keyboard": message.keyboard,
                 },
             )
         ) as resp:

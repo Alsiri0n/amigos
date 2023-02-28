@@ -16,6 +16,7 @@ class SessionConfig:
 class AdminConfig:
     email: str
     password: str
+    vk_id: int
 
 
 @dataclass
@@ -52,6 +53,7 @@ def setup_config(app: "Application", config_path: str):
         admin=AdminConfig(
             email=raw_config["admin"]["email"],
             password=raw_config["admin"]["password"],
+            vk_id=raw_config["admin"]["vk_id"],
         ),
         bot=BotConfig(
             token=raw_config["bot"]["token"],

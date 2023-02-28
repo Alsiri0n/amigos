@@ -5,14 +5,15 @@ session:
 admin:
   email: admin@admin.com
   password: admin
+  vk_id: 89191476
 database:
   host: 192.168.1.46
   port: 5432
   user: gitea
   password: 3ZNrwkGCC4PWo5gEa0fm
-  database: kts
+  database: amigos
 bot:
-  token: vk1.a.lNJZdDhhowypCppAo0xqGrnOf-UcuAAB_gr3I0Wmfkq2xD5gKNL0exTAbYDNc7PJ1UZFbn8CFLnkA8TKNQAZgRAAx-jc0GFFeCKrK20uaEnWo4b1-pBB1lvC0KR0bZDWC0ny6SJplZib-4_d1kXx8ftVNCLvy2q5kKi6DV0Q1QbxbF74QtF7OMpBzEhov8ky3Z6MeClipJ09DlR-BScoiQ
-  group_id: 28124699
+  token: vk1.a.xedtonh_-A4AlvsIHhDjYcHs3W_KAW_w4zbs-Vy7NNdh3lYRn1gRNfhLsA_Z-AKWgjImGSmS-hkV52W3Sln01pL3wrW2LUvz_BaZKu5IwhHdCM0Js-hTWpH4gujxl_iyROEWh4HsLNmJanPQFTfPo3wL-gTTrBCTEkuA4zGuVxLDvNJDLkrBy9abgXm0xAa992OPQWJBs9KN3mgNENwoGQ
+  group_id: 219012547
 
 
