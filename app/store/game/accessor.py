@@ -1,6 +1,10 @@
-from sqlalchemy import select, and_, update, func
+import typing
+from datetime import datetime
+
+from sqlalchemy import select, update, func
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.engine import Result
+
 
 from app.base.base_accessor import BaseAccessor
 from app.game.models import (
@@ -10,18 +14,18 @@ from app.game.models import (
     Answer,
     AnswerModel,
     User,
-    UserModel,
+    UserModel, GameModel,
 )
-from app.store.vk_api.dataclasses import RawUser
+if typing.TYPE_CHECKING:
+    from app.web.app import Application
 
 
 class GameAccessor(BaseAccessor):
+    def __init__(self, app: "Application"):
+        self.app = app
+        self.current_game_id: int = -1
 
-    # async def connect(self, app: "Application"):
-    #     self.app = app
-    #     await self.loading_user_to_db()
-
-    async def get_users_count(self) -> int:
+    async def get_users_count_in_db(self) -> int:
         async with self.app.database.session() as session:
             async with session.begin():
                 q = select(func.count(UserModel.id))
@@ -29,16 +33,11 @@ class GameAccessor(BaseAccessor):
         cnt_users = result.scalar()
         return cnt_users
 
-    async def add_users(self, list_raw_users: [RawUser]) -> None:
+    async def add_users(self, list_users: [UserModel]) -> None:
         async with self.app.database.session() as session:
             async with session.begin():
-                for user in list_raw_users:
-                    exists_user: User = await self.get_user_by_vk_id(user.id_)
-                    if not exists_user:
-                        user_model: UserModel = UserModel(vk_id=user.id_,
-                                                          first_name=user.first_name,
-                                                          last_name=user.last_name)
-                    session.add(user_model)
+                for user in list_users:
+                    session.add(user)
             await session.commit()
 
     async def get_user_by_vk_id(self, vk_id: int) -> User | None:
@@ -100,6 +99,30 @@ class GameAccessor(BaseAccessor):
         ans = await self.create_answers(question_id=q_id, answers=answer_list)
         question: Question = Question(answers=ans, id=q_id, title=title)
         return question
+
+    async def create_game(self) -> None:
+        game_model: GameModel = GameModel(started_at=datetime.now())
+        async with self.app.database.session() as session:
+            async with session.begin():
+                session.add(game_model)
+            await session.commit()
+        # print(game_model)
+        self.current_game_id = game_model.id
+        # TODO создать roadmap
+        # TODO создать gameanswer
+
+    async def end_game(self) -> None:
+        async with self.app.database.session() as session:
+            async with session.begin():
+                q = update(GameModel).\
+                    where(GameModel.ended_at.is_(None)).\
+                    values(ended_at=datetime.now())
+                await session.execute(q)
+        self.current_game_id = -1
+        #game: Game  game_model.to_dc()
+        # TODO записать статистику по игре
+
+
 
     # async def get_question(self, game_id: int) -> Question:
     #     pass

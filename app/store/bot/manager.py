@@ -1,9 +1,9 @@
-import json
 import typing
 from logging import getLogger
 from typing import Optional
 from app.store.vk_api.dataclasses import Message, Update, MessageEvent, RawUser
-from app.game.models import Question, User
+from app.game.models import Question, UserModel, User
+
 
 if typing.TYPE_CHECKING:
     from app.web.app import Application
@@ -25,14 +25,12 @@ class BotManager:
     #При запуске бота заполняем бд пользователями из сообщества
     async def connect(self, app: "Application"):
         # Получаем количество пользователей в базе
-        cnt = await self.app.store.games.get_users_count()
+        cnt = await self.app.store.games.get_users_count_in_db()
         # Получаем список пользователей из вк
         raw_users: [RawUser] = await self.app.store.vk_api.get_community_members(cnt)
         # Заносим пользователей в базу
         if raw_users:
             await self.app.store.games.add_users(raw_users)
-        return
-
 
     async def handle_updates(self, updates: list[Update]):
         message_text = "Hello"
@@ -57,11 +55,13 @@ class BotManager:
                     await self._sending_to_callback(update, message_text)
                 elif update.object.payload == {"game": "1"}:
                     cur_user = await self.app.store.games.get_user_by_vk_id(update.object.user_id)
+                    await self.app.store.games.create_game()
                     message_text = f"Участник {cur_user.first_name} {cur_user.last_name} запустил игру."
                     await self._sending_to_callback(update, message_text)
                     await self._sending_to_chat(update, message_text, KEYBOARD_TYPE["start"])
                 elif update.object.payload == {"game": "0"}:
                     cur_user = await self.app.store.games.get_user_by_vk_id(update.object.user_id)
+                    await self.app.store.games.end_game()
                     message_text = f"Участник {cur_user.first_name} {cur_user.last_name} закончил игру."
                     await self._sending_to_callback(update, message_text)
                     await self._sending_to_chat(update, message_text, KEYBOARD_TYPE["default"])
@@ -70,7 +70,16 @@ class BotManager:
                 exists_user: User = await self.app.store.games.get_user_by_vk_id(update.object.user_id)
                 if not exists_user:
                     raw_users: [RawUser] = await self.app.store.vk_api.get_user_data([update.object.user_id])
-                    await self.app.store.games.add_users(raw_users)
+                    list_user_model: [UserModel] = []
+                    for user in raw_users:
+                        list_user_model.append(
+                            UserModel(
+                                vk_id=user.id_,
+                                first_name=user.first_name,
+                                last_name=user.last_name
+                            )
+                        )
+                    await self.app.store.games.add_users(list_user_model)
 
             # Handling another events
             else:

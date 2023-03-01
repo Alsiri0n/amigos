@@ -66,7 +66,14 @@ class GameModel(db):
     __tablename__ = "Game"
     id = Column(BigInteger, primary_key=True, nullable=False)
     started_at = Column(DateTime)
-    ended_ad = Column(DateTime)
+    ended_at = Column(DateTime, nullable=True)
+
+    def to_dc(self):
+        return Game(
+            id=self.id,
+            started_at=self.started_at,
+            ended_at=self.ended_at,
+        )
 
 
 class UserModel(db):
