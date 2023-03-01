@@ -51,7 +51,8 @@ class User:
 class Question:
     id: int
     title: str
-    factor: int
+    answers: list["Answer"]
+    #factor: int
 
 
 @dataclass
@@ -101,6 +102,7 @@ class StatisticModel(db):
     game_id = Column(BigInteger, ForeignKey("Game.id"))
     user_id = Column(BigInteger, ForeignKey("User.id"))
 
+
 class RoadMapModel(db):
     __tablename__ = "RoadMap"
     id = Column(BigInteger, primary_key=True, nullable=False)
@@ -123,9 +125,21 @@ class QuestionModel(db):
     __tablename__ = "Question"
     id = Column(BigInteger, primary_key=True, nullable=False)
     title = Column(Text, nullable=False, unique=True)
-    factor = Column(Integer, nullable=False, default=1)
+    #factor = Column(Integer, nullable=False, default=1)
 
     answers = relationship("AnswerModel", back_populates="question", cascade="all, delete")
+
+    def to_dc(self):
+        return Question(
+            id=self.id,
+            title=self.title,
+            answers=[Answer(
+                id=a.answers.id,
+                title=a.answers.title,
+                score=a.answers.score,
+                question_id=self.id
+            ) for a in self.answers]
+        )
 
 
 class AnswerModel(db):

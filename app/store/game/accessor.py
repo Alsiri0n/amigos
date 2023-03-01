@@ -1,4 +1,5 @@
 import typing
+import random
 from datetime import datetime
 
 from sqlalchemy import select, update, func
@@ -14,7 +15,7 @@ from app.game.models import (
     Answer,
     AnswerModel,
     User,
-    UserModel, GameModel,
+    UserModel, GameModel, RoadMapModel,
 )
 if typing.TYPE_CHECKING:
     from app.web.app import Application
@@ -64,11 +65,11 @@ class GameAccessor(BaseAccessor):
         if question_model:
             question: Question = Question(id=question_model.id,
                                           title=question_model.title,
-                                          answers=[Answer(title=i.title, points=i.points)
+                                          answers=[Answer(title=i.title, score=i.score)
                                                    for i in question_model.answers])
         return question
 
-    async def create_answers(self, question_id: int, answers: [Answer]) -> list[Answer]:
+    async def create_answers(self, question_id: int, answers: [AnswerModel]) -> list[Answer]:
         async with self.app.database.session() as session:
             async with session.begin():
                 q = select(AnswerModel).where(AnswerModel.question_id == question_id)
@@ -76,28 +77,27 @@ class GameAccessor(BaseAccessor):
             answer_model = result.scalar()
             if not answer_model:
                 for ans in answers:
-                    answer_model = AnswerModel(title=ans.title, points=ans.points, question_id=question_id)
-                    session.add(answer_model)
-                await session.commit()
+                    session.add(ans)
+            await session.commit()
         return answers
 
     async def create_question(self, title: str, answers: list) -> Question:
-        answer_list: [Answer] = []
-        if not isinstance(answers[0], Answer):
-            for ans in answers:
-                answer_list.append(Answer(title=ans["title"], points=ans["points"]))
         question_model: QuestionModel = QuestionModel(title=title)
-        # answer_list: list[Answer] = answers
         async with self.app.database.session() as session:
             async with session.begin():
                 session.add(question_model)
                 await session.flush()
                 await session.refresh(question_model)
-                q_id = question_model.id
                 await session.commit()
-
-        ans = await self.create_answers(question_id=q_id, answers=answer_list)
-        question: Question = Question(answers=ans, id=q_id, title=title)
+        if not isinstance(answers[0], Answer):
+            answer_model_list: [AnswerModel] = []
+            for ans in answers:
+                answer_model_list.append(
+                    AnswerModel(title=ans["title"],
+                                score=ans["score"],
+                                question_id=question_model.id))
+        ans = await self.create_answers(question_id=question_model.id, answers=answer_model_list)
+        question: Question = Question(answers=ans, id=question_model.id, title=title)
         return question
 
     async def create_game(self) -> None:
@@ -109,7 +109,34 @@ class GameAccessor(BaseAccessor):
         # print(game_model)
         self.current_game_id = game_model.id
         # TODO создать roadmap
+        await self.create_roadmap(game_model)
         # TODO создать gameanswer
+
+    async def create_roadmap(self, cur_game: GameModel) -> None:
+        list_questions_id: list[int] = await self.list_questions(5)
+        async with self.app.database.session() as session:
+            async with session.begin():
+                for question in list_questions_id:
+                    roadmap_model: RoadMapModel = RoadMapModel(
+                        status=False,
+                        game_id=cur_game.id,
+                        question_id=question
+                    )
+                    session.add(roadmap_model)
+            await session.commit()
+
+    async def list_questions(self, number: int) -> list[int]:
+
+        async with self.app.database.session() as session:
+            async with session.begin():
+                q = select(QuestionModel)
+                    #options(subqueryload(QuestionModel.answers))
+            result: Result = await session.execute(q)
+        questions: [Question] = result.scalars()
+        output: list[int] = []
+        for q in questions:
+            output.append(q.id)
+        return output
 
     async def end_game(self) -> None:
         async with self.app.database.session() as session:
@@ -118,8 +145,8 @@ class GameAccessor(BaseAccessor):
                     where(GameModel.ended_at.is_(None)).\
                     values(ended_at=datetime.now())
                 await session.execute(q)
+        # Update возвращает только result.rowcount
         self.current_game_id = -1
-        #game: Game  game_model.to_dc()
         # TODO записать статистику по игре
 
 
