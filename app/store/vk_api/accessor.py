@@ -27,19 +27,21 @@ KEYBOARD = {
             [
                 {
                     "action": {
-                        "type": "text",
-                        "payload": "",
-                        "label": "/поехали"
+                        "type": "callback",
+                        "payload": "{\"game\": \"1\"}",
+                        "label": "Поехали"
                     },
+                    "color": "positive"
                 }
             ],
             [
                 {
                     "action": {
                         "type": "callback",
-                        "payload": "",
-                        "label": "/Правила"
+                        "payload": "{\"game\": \"rules\"}",
+                        "label": "Правила"
                     },
+                    "color": "secondary"
                 }
             ]
         ]
@@ -49,27 +51,30 @@ KEYBOARD = {
             [
                 {
                     "action": {
-                        "type": "text",
-                        "payload": "",
-                        "label": "/приехали"
+                        "type": "callback",
+                        "payload": "{\"game\": \"0\"}",
+                        "label": "Приехали"
                     },
+                    "color": "negative"
                 }
             ],
             [
                 {
                     "action": {
                         "type": "callback",
-                        "payload": "",
-                        "label": "/Правила"
+                        "payload": "{\"game\": \"rules\"}",
+                        "label": "Правила"
                     },
+                    "color": "secondary"
                 }
             ]
         ]
     },
 }
-MESSAGES_TYPE = {
+EVENT_TYPE = {
     "text": "message_new",
-    "event": "message_event"
+    "event": "message_event",
+    "join": "group_join",
 }
 
 
@@ -143,33 +148,34 @@ class VkApiAccessor(BaseAccessor):
             raw_updates = data.get("updates", [])
             updates = []
             for update in raw_updates:
-                if update["type"] == MESSAGES_TYPE["text"]:
+                if update["type"] == EVENT_TYPE["text"]:
                     updates.append(
                         Update(
-                            type=MESSAGES_TYPE["text"],
-                            object_message_new=UpdateObjectMessageNew(
-                                id=update["object"]["message"]["id"],
+                            type=EVENT_TYPE["text"],
+                            object=UpdateObjectMessageNew(
+                                id_=update["object"]["message"]["id"],
                                 user_id=update["object"]["message"]["from_id"],
-                                peer_id=int(update["object"]["message"]["peer_id"]),
-                                text=update["object"]["message"]["text"],
-                            ),
-                            object_message_event=None
+                                peer_id=update["object"]["message"]["peer_id"],
+                                text=update["object"]["message"]["text"]
+                            )
                         )
                     )
-
-                elif update["type"] == MESSAGES_TYPE["event"]:
+                elif update["type"] == EVENT_TYPE["event"]:
                     updates.append(
                         Update(
-                            type=MESSAGES_TYPE["event"],
-                            object_message_event=UpdateObjectMessageEvent(
-                                id=update["event_id"],
+                            type=EVENT_TYPE["event"],
+                            object=UpdateObjectMessageEvent(
+                                id_=update["event_id"],
                                 user_id=update["object"]["user_id"],
-                                peer_id=int(update["object"]["peer_id"]),
+                                peer_id=update["object"]["peer_id"],
                                 event_id=update["object"]["event_id"],
-                                payload=update["object"]["payload"],
-                            ),
-                            object_message_new=None
+                                payload=update["object"]["payload"]
+                            )
                         )
+                    )
+                elif update["type"] == EVENT_TYPE["join"]:
+                    updates.append(
+                        []
                     )
                 await self.app.store.bots_manager.handle_updates(updates)
 

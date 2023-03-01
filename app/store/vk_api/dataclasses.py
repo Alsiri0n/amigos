@@ -3,12 +3,12 @@ from dataclasses import dataclass
 
 @dataclass
 class UpdateObject:
-    id: int
+    id_: int
     user_id: int
     peer_id: int
 
 
-@dataclass()
+@dataclass
 class UpdateObjectMessageNew(UpdateObject):
     text: str
 
@@ -22,8 +22,9 @@ class UpdateObjectMessageEvent(UpdateObject):
 @dataclass
 class Update:
     type: str
-    object_message_new: UpdateObjectMessageNew | None
-    object_message_event: UpdateObjectMessageEvent | None
+    object: UpdateObject
+    #object_message_new: UpdateObjectMessageNew | None
+    #object_message_event: UpdateObjectMessageEvent | None
 
 
 @dataclass
@@ -38,9 +39,12 @@ class Message:
 @dataclass
 class MessageEvent:
     user_id: int
-    #text: str
-    #keyboard_type: str
     event_id: str
     peer_id: int
     message: str
     method: str
+
+@dataclass
+class JoinEvent:
+    user_id: int
+    group_id: int

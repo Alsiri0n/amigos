@@ -27,26 +27,42 @@ class BotManager:
 
     async def handle_updates(self, updates: list[Update]):
         message_text = "Hello"
-
         for update in updates:
-            # cur_status: Optional[GameStatus] = await self.app.store.games.get_last_status(update.object.user_id)
             # Text new_message
+            # Логику перенести в коллбэки нельзя, потому что коллбэк отвечает только одному пользователю
+            # Но есть идея, администратор может запустить игру и дублировать сообщение в общий чат
             # TODO перенести логику в коллбэки, здесь обрабатывать только входящие сообщения от пользователя
             if update.type == "message_new":
-                if update.object_message_new.text == self.start_command + "/Правила":
-                    message_text = "Правила игры"
-                    await self._sending_to_chat(update, message_text, KEYBOARD_TYPE["default"])
-                if update.object_message_new.text == self.start_command + "/поехали":
-                    message_text = "Игра началась"
-                    await self._sending_to_chat(update, message_text, KEYBOARD_TYPE["start"])
-                if update.object_message_new.text == self.start_command + "/приехали":
-                    message_text = "Игра завершилась"
-                    await self._sending_to_chat(update, message_text, KEYBOARD_TYPE["default"])
+                pass
+                # if update.object_message_new.text == self.start_command + "/Правила":
+                #     message_text = "Правила игры"
+                #     await self._sending_to_chat(update, message_text, KEYBOARD_TYPE["default"])
+                # if update.object.text == self.start_command + "/поехали":
+                #     message_text = "Игра началась"
+                #     await self._sending_to_chat(update, message_text, KEYBOARD_TYPE["start"])
+                # if update.object.text == self.start_command + "/приехали":
+                #     message_text = "Игра завершилась"
+                #     await self._sending_to_chat(update, message_text, KEYBOARD_TYPE["default"])
             # Если коллбэк
             elif update.type == "message_event":
-                message_text = "Правила игры"
-                await self._sending_to_chat_event(update, message_text, KEYBOARD_TYPE["start"])
-
+                if update.object.payload == {"game": "rules"}:
+                    message_text = "Первое правило бойцовского клуба."
+                    await self._sending_to_chat_event(update, message_text)
+                elif update.object.payload == {"game": "1"}:
+                    message_text = "Вы запустили игру"
+                    await self._sending_to_chat_event(update, message_text)
+                    await self._sending_to_chat(update, message_text, KEYBOARD_TYPE["start"])
+                elif update.object.payload == {"game": "0"}:
+                    message_text = "Игра окончена"
+                    await self._sending_to_chat_event(update, message_text)
+                    await self._sending_to_chat(update, message_text, KEYBOARD_TYPE["default"])
+            # Пользователь добавился в группу
+            # TODO добавить пользователя в базу
+            elif update.type == "group_join":
+                pass
+            # Другие события в сообществе
+            else:
+                await self._sending_to_chat(update, "", KEYBOARD_TYPE["default"])
             # elif 3 < cur_status.id < 8 and update.object.text == "Ответить":
             #     message_text = "Напишите ваш ответ"
             #     await self._sending(update, None, message_text, KEYBOARD["keyboard_in_game"])
@@ -87,7 +103,7 @@ class BotManager:
             Message(
                 # user_id=update.object.user_id,
                 text=message,
-                peer_id=update.object_message_new.peer_id,
+                peer_id=update.object.peer_id,
                 keyboard_type=keyboard_type,
                 method="messages.send",
             )
@@ -96,14 +112,13 @@ class BotManager:
     async def _sending_to_chat_event(self,
                                      update: Update,
                                      message: str,
-                                     keyboard_typ: str,
                                      ):
         await self.app.store.vk_api.send_event(
             MessageEvent(
-                peer_id=update.object_message_event.peer_id,
-                user_id=update.object_message_event.user_id,
+                peer_id=update.object.peer_id,
+                user_id=update.object.user_id,
                 message=message,
-                event_id=update.object_message_event.event_id,
+                event_id=update.object.event_id,
                 method=METHODS["callback"]
             )
         )
