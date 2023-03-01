@@ -1,23 +1,58 @@
-from sqlalchemy import select, and_, update
+from sqlalchemy import select, and_, update, func
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.engine import Result
 
 from app.base.base_accessor import BaseAccessor
 from app.game.models import (
     Game,
-    # GameModel,
-    # GameStatus,
-    # GameStatusModel,
-    # GameResult,
-    # GameResultModel,
     Question,
     QuestionModel,
     Answer,
     AnswerModel,
+    User,
+    UserModel,
 )
+from app.store.vk_api.dataclasses import RawUser
 
 
 class GameAccessor(BaseAccessor):
+
+    # async def connect(self, app: "Application"):
+    #     self.app = app
+    #     await self.loading_user_to_db()
+
+    async def get_users_count(self) -> int:
+        async with self.app.database.session() as session:
+            async with session.begin():
+                q = select(func.count(UserModel.id))
+            result: Result = await session.execute(q)
+        cnt_users = result.scalar()
+        return cnt_users
+
+    async def add_users(self, list_raw_users: [RawUser]) -> None:
+        async with self.app.database.session() as session:
+            async with session.begin():
+                for user in list_raw_users:
+                    exists_user: User = await self.get_user_by_vk_id(user.id_)
+                    if not exists_user:
+                        user_model: UserModel = UserModel(vk_id=user.id_,
+                                                          first_name=user.first_name,
+                                                          last_name=user.last_name)
+                    session.add(user_model)
+            await session.commit()
+
+    async def get_user_by_vk_id(self, vk_id: int) -> User | None:
+        user = None
+        async with self.app.database.session() as session:
+            async with session.begin():
+                q = select(UserModel).\
+                    where(UserModel.vk_id == vk_id)
+            result: Result = await session.execute(q)
+            user_model: UserModel = result.scalar()
+        if user_model:
+            user: User = user_model.to_dc()
+        return user
+
     async def get_question_by_title(self, title: str) -> Question | None:
         question = None
         async with self.app.database.session() as session:
@@ -66,8 +101,8 @@ class GameAccessor(BaseAccessor):
         question: Question = Question(answers=ans, id=q_id, title=title)
         return question
 
-    async def get_question(self, game_id: int) -> Question:
-        pass
+    # async def get_question(self, game_id: int) -> Question:
+    #     pass
         # async with self.app.database.session() as session:
         #     async with session.begin():
         #         q = select(QuestionModel).\
@@ -105,8 +140,8 @@ class GameAccessor(BaseAccessor):
         #             return game_status
         # return None
 
-    async def create_game(self, user_id: int) -> Game:
-        pass
+    # async def create_game(self, user_id: int) -> Game:
+    #     pass
         # game_model: GameModel = GameModel(creator_id=user_id)
         # async with self.app.database.session() as session:
         #     async with session.begin():
@@ -157,8 +192,8 @@ class GameAccessor(BaseAccessor):
     #                 values(game_status_id=status)
     #             await session.execute(q)
 
-    async def user_answer(self, game_id: int, status_id: int, answer: str):
-        pass
+    # async def user_answer(self, game_id: int, status_id: int, answer: str):
+    #     pass
     # async def create_theme(self, title: str) -> Theme:
     #     theme_model = ThemeModel(title=str(title))
     #     async with self.app.database.session() as session:

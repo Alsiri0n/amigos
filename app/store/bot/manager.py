@@ -2,8 +2,8 @@ import json
 import typing
 from logging import getLogger
 from typing import Optional
-from app.store.vk_api.dataclasses import Message, Update, MessageEvent
-from app.game.models import Question
+from app.store.vk_api.dataclasses import Message, Update, MessageEvent, RawUser
+from app.game.models import Question, User
 
 if typing.TYPE_CHECKING:
     from app.web.app import Application
@@ -11,10 +11,6 @@ if typing.TYPE_CHECKING:
 KEYBOARD_TYPE = {
     "default": "keyboard_default",
     "start": "keyboard_game",
-}
-METHODS = {
-    "text": "messages.send",
-    "callback": "messages.sendMessageEventAnswer",
 }
 
 
@@ -24,14 +20,24 @@ class BotManager:
         self.bot = None
         self.logger = getLogger("handler")
         self.start_command = f"[club{self.app.config.bot.group_id}|@club{self.app.config.bot.group_id}] "
+        app.on_startup.append(self.connect)
+
+    #При запуске бота заполняем бд пользователями из сообщества
+    async def connect(self, app: "Application"):
+        # Получаем количество пользователей в базе
+        cnt = await self.app.store.games.get_users_count()
+        # Получаем список пользователей из вк
+        raw_users: [RawUser] = await self.app.store.vk_api.get_community_members(cnt)
+        # Заносим пользователей в базу
+        if raw_users:
+            await self.app.store.games.add_users(raw_users)
+        return
+
 
     async def handle_updates(self, updates: list[Update]):
         message_text = "Hello"
         for update in updates:
-            # Text new_message
-            # Логику перенести в коллбэки нельзя, потому что коллбэк отвечает только одному пользователю
-            # Но есть идея, администратор может запустить игру и дублировать сообщение в общий чат
-            # TODO перенести логику в коллбэки, здесь обрабатывать только входящие сообщения от пользователя
+            # Handling new message
             if update.type == "message_new":
                 pass
                 # if update.object_message_new.text == self.start_command + "/Правила":
@@ -43,24 +49,30 @@ class BotManager:
                 # if update.object.text == self.start_command + "/приехали":
                 #     message_text = "Игра завершилась"
                 #     await self._sending_to_chat(update, message_text, KEYBOARD_TYPE["default"])
-            # Если коллбэк
+
+            # Handling callback buttons
             elif update.type == "message_event":
                 if update.object.payload == {"game": "rules"}:
                     message_text = "Первое правило бойцовского клуба."
-                    await self._sending_to_chat_event(update, message_text)
+                    await self._sending_to_callback(update, message_text)
                 elif update.object.payload == {"game": "1"}:
-                    message_text = "Вы запустили игру"
-                    await self._sending_to_chat_event(update, message_text)
+                    cur_user = await self.app.store.games.get_user_by_vk_id(update.object.user_id)
+                    message_text = f"Участник {cur_user.first_name} {cur_user.last_name} запустил игру."
+                    await self._sending_to_callback(update, message_text)
                     await self._sending_to_chat(update, message_text, KEYBOARD_TYPE["start"])
                 elif update.object.payload == {"game": "0"}:
-                    message_text = "Игра окончена"
-                    await self._sending_to_chat_event(update, message_text)
+                    cur_user = await self.app.store.games.get_user_by_vk_id(update.object.user_id)
+                    message_text = f"Участник {cur_user.first_name} {cur_user.last_name} закончил игру."
+                    await self._sending_to_callback(update, message_text)
                     await self._sending_to_chat(update, message_text, KEYBOARD_TYPE["default"])
-            # Пользователь добавился в группу
-            # TODO добавить пользователя в базу
+            # Handling new user to group
             elif update.type == "group_join":
-                pass
-            # Другие события в сообществе
+                exists_user: User = await self.app.store.games.get_user_by_vk_id(update.object.user_id)
+                if not exists_user:
+                    raw_users: [RawUser] = await self.app.store.vk_api.get_user_data([update.object.user_id])
+                    await self.app.store.games.add_users(raw_users)
+
+            # Handling another events
             else:
                 await self._sending_to_chat(update, "", KEYBOARD_TYPE["default"])
             # elif 3 < cur_status.id < 8 and update.object.text == "Ответить":
@@ -105,20 +117,18 @@ class BotManager:
                 text=message,
                 peer_id=update.object.peer_id,
                 keyboard_type=keyboard_type,
-                method="messages.send",
             )
         )
 
-    async def _sending_to_chat_event(self,
-                                     update: Update,
-                                     message: str,
-                                     ):
+    async def _sending_to_callback(self,
+                                   update: Update,
+                                   message: str,
+                                   ):
         await self.app.store.vk_api.send_event(
             MessageEvent(
                 peer_id=update.object.peer_id,
                 user_id=update.object.user_id,
                 message=message,
                 event_id=update.object.event_id,
-                method=METHODS["callback"]
             )
         )

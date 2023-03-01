@@ -8,11 +8,12 @@ from aiohttp.client import ClientSession
 
 from app.base.base_accessor import BaseAccessor
 from app.store.vk_api.dataclasses import (Message,
-                                          UpdateObject,
                                           MessageEvent,
                                           Update,
                                           UpdateObjectMessageNew,
                                           UpdateObjectMessageEvent,
+                                          UpdateObject,
+                                          RawUser,
                                           )
 from app.store.vk_api.poller import Poller
 
@@ -75,6 +76,12 @@ EVENT_TYPE = {
     "text": "message_new",
     "event": "message_event",
     "join": "group_join",
+}
+METHODS = {
+    "text": "messages.send",
+    "callback": "messages.sendMessageEventAnswer",
+    "getMembers": "groups.getMembers",
+    "userdata": "users.get"
 }
 
 
@@ -175,7 +182,14 @@ class VkApiAccessor(BaseAccessor):
                     )
                 elif update["type"] == EVENT_TYPE["join"]:
                     updates.append(
-                        []
+                        Update(
+                            type=EVENT_TYPE["join"],
+                            object=UpdateObject(
+                                id_=update["event_id"],
+                                user_id=update["object"]["user_id"],
+                                peer_id=None,
+                            )
+                        )
                     )
                 await self.app.store.bots_manager.handle_updates(updates)
 
@@ -183,7 +197,7 @@ class VkApiAccessor(BaseAccessor):
         async with self.session.get(
                 self._build_query(
                     host=API_PATH,
-                    method=message.method,
+                    method=METHODS["text"],
                     params={
                         # "user_id": message.user_id,
                         "random_id": random.randint(1,  2 ** 32),
@@ -201,23 +215,71 @@ class VkApiAccessor(BaseAccessor):
         async with self.session.get(
                 self._build_query(
                     host=API_PATH,
-                    method=message_event.method,
-                    # event_id=message_event.event_id,
+                    method=METHODS["callback"],
                     params={
                         # "user_id": message.user_id,
                         "access_token": self.app.config.bot.token,
                         "event_id": message_event.event_id,
                         "user_id": message_event.user_id,
-                        #"random_id": random.randint(1,  2 ** 32),
                         "peer_id": message_event.peer_id,
                         "event_data": json.dumps({
                             "type": "show_snackbar",
                             "text": message_event.message
                         }),
-
-                        #"keyboard": json.dumps(KEYBOARD[message_event.keyboard_type])
                     },
                 )
         ) as resp:
             data = await resp.json()
             self.logger.info(data)
+
+    async def get_community_members(self, offset: int) -> list[RawUser] | None:
+        async with self.session.get(
+                self._build_query(
+                    host=API_PATH,
+                    method=METHODS["getMembers"],
+                    params={
+                        "access_token": self.app.config.bot.token,
+                        "group_id": self.app.config.bot.group_id,
+                        "sort": "time_desc",
+                        "offset": offset,
+                        "fields": list,
+                    },
+                )
+        ) as resp:
+            data = await resp.json()
+            self.logger.info(data)
+            if data["response"]["items"]:
+                raw_users: [RawUser] = []
+                for el in data["response"]["items"]:
+                    raw_users.append(RawUser(
+                        id_=el["id"],
+                        first_name=el["first_name"],
+                        last_name=el["last_name"]
+                    ))
+                return raw_users
+            return None
+
+    async def get_user_data(self, list_ids: [int]) -> list[RawUser] | None:
+        async with self.session.get(
+                self._build_query(
+                    host=API_PATH,
+                    method=METHODS["userdata"],
+                    params={
+                        "access_token": self.app.config.bot.token,
+                        "user_ids": ",".join(map(str, list_ids)),
+                        "fields": "first_name, last_name",
+                    },
+                )
+        ) as resp:
+            data = await resp.json()
+            self.logger.info(data)
+            if data["response"]:
+                raw_users: [RawUser] = []
+                for el in data["response"]:
+                    raw_users.append(RawUser(
+                        id_=el["id"],
+                        first_name=el["first_name"],
+                        last_name=el["last_name"]
+                    ))
+                return raw_users
+            return None

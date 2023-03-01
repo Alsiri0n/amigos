@@ -5,7 +5,7 @@ from dataclasses import dataclass
 class UpdateObject:
     id_: int
     user_id: int
-    peer_id: int
+    peer_id: int | None
 
 
 @dataclass
@@ -23,8 +23,6 @@ class UpdateObjectMessageEvent(UpdateObject):
 class Update:
     type: str
     object: UpdateObject
-    #object_message_new: UpdateObjectMessageNew | None
-    #object_message_event: UpdateObjectMessageEvent | None
 
 
 @dataclass
@@ -33,7 +31,7 @@ class Message:
     text: str
     keyboard_type: str
     peer_id: int
-    method: str
+    #method: str
 
 
 @dataclass
@@ -42,9 +40,16 @@ class MessageEvent:
     event_id: str
     peer_id: int
     message: str
-    method: str
+
 
 @dataclass
 class JoinEvent:
     user_id: int
     group_id: int
+
+
+@dataclass
+class RawUser:
+    id_: int
+    first_name: str
+    last_name: str

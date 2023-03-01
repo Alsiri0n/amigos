@@ -11,10 +11,9 @@ class BaseAccessor:
         self.logger = getLogger("accessor")
         app.on_startup.append(self.connect)
         app.on_cleanup.append(self.disconnect)
-    
 
-    async def connect(self, app:"Application"):
+    async def connect(self, app: "Application"):
         return
-    
-    async def disconnect(self, app:"Application"):
+
+    async def disconnect(self, app: "Application"):
         return

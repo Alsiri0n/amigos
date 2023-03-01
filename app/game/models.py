@@ -76,6 +76,14 @@ class UserModel(db):
     first_name = Column(Text, nullable=True)
     last_name = Column(Text, nullable=True)
 
+    def to_dc(self) -> User:
+        return User(
+            id=self.id,
+            vk_id=self.vk_id,
+            first_name=self.first_name,
+            last_name=self.last_name,
+        )
+
 
 class StatisticModel(db):
     __tablename__ = "Statistic"
