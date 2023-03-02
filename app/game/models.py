@@ -71,7 +71,7 @@ class GameModel(db):
 
     statistic = relationship("StatisticModel", back_populates="game")
     road_map = relationship("RoadMapModel", back_populates="game")
-    game_answer = relationship("GameAnswerModel", back_populates="game")
+    game_answer = relationship("GameAnswersModel", back_populates="game")
 
     def to_dc(self):
         return Game(
@@ -88,7 +88,7 @@ class UserModel(db):
     first_name = Column(Text, nullable=True)
     last_name = Column(Text, nullable=True)
 
-    game_answer = relationship("GameAnswerModel", back_populates="user")
+    game_answer = relationship("GameAnswersModel", back_populates="user")
     statistic = relationship("StatisticModel", back_populates="user")
 
     def to_dc(self) -> User:
@@ -118,7 +118,7 @@ class RoadMapModel(db):
     id = Column(BigInteger, primary_key=True, nullable=False)
     status = Column(Boolean, nullable=False, default=False)
 
-    game_id = Column(BigInteger, ForeignKey("Question.id"))
+    game_id = Column(BigInteger, ForeignKey("Game.id"))
     game = relationship("GameModel", back_populates="road_map")
 
     question_id = Column(BigInteger, ForeignKey("Question.id"))
@@ -169,4 +169,4 @@ class AnswerModel(db):
     question_id = Column(BigInteger, ForeignKey("Question.id", ondelete="CASCADE"))
     question = relationship("QuestionModel", back_populates="answers")
 
-    game_answer = relationship("GameAnswerModel", back_populates="answer")
+    game_answer = relationship("GameAnswersModel", back_populates="answer")

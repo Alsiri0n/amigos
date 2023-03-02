@@ -113,7 +113,7 @@ class GameAccessor(BaseAccessor):
         # TODO создать gameanswer
 
     async def create_roadmap(self, cur_game: GameModel) -> None:
-        list_questions_id: list[int] = await self.list_questions(5)
+        list_questions_id: list[int] = await self.list_questions(1)
         async with self.app.database.session() as session:
             async with session.begin():
                 for question in list_questions_id:
@@ -129,8 +129,8 @@ class GameAccessor(BaseAccessor):
 
         async with self.app.database.session() as session:
             async with session.begin():
-                q = select(QuestionModel)
-                    #options(subqueryload(QuestionModel.answers))
+                q = select(QuestionModel).\
+                    options(subqueryload(QuestionModel.answers))
             result: Result = await session.execute(q)
         questions: [Question] = result.scalars()
         output: list[int] = []
