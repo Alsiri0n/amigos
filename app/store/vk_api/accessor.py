@@ -1,7 +1,6 @@
-import typing
 import json
 import random
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from aiohttp import TCPConnector
 from aiohttp.client import ClientSession
@@ -17,7 +16,7 @@ from app.store.vk_api.dataclasses import (Message,
                                           )
 from app.store.vk_api.poller import Poller
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     from app.web.app import Application
 
 API_PATH = "https://api.vk.com/method/"
@@ -105,10 +104,10 @@ class VkApiAccessor(BaseAccessor):
         await self.poller.start()
 
     async def disconnect(self, app: "Application") -> None:
-        if self.session:
-            await self.session.close()
         if self.poller:
             await self.poller.stop()
+        if self.session:
+            await self.session.close()
 
     @staticmethod
     def _build_query(host: str, method: str, params: dict) -> str:
@@ -283,3 +282,7 @@ class VkApiAccessor(BaseAccessor):
                     ))
                 return raw_users
             return None
+
+    async def round_begin(self, timeout: int):
+        await self.poller.start_round_timer(timeout)
+        # await self.poller.waiting_round(t)

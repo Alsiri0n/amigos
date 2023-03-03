@@ -31,7 +31,6 @@ class Message:
     text: str
     keyboard_type: str
     peer_id: int
-    #method: str
 
 
 @dataclass

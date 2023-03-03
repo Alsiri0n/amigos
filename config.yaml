@@ -15,5 +15,6 @@ database:
 bot:
   token: vk1.a.xedtonh_-A4AlvsIHhDjYcHs3W_KAW_w4zbs-Vy7NNdh3lYRn1gRNfhLsA_Z-AKWgjImGSmS-hkV52W3Sln01pL3wrW2LUvz_BaZKu5IwhHdCM0Js-hTWpH4gujxl_iyROEWh4HsLNmJanPQFTfPo3wL-gTTrBCTEkuA4zGuVxLDvNJDLkrBy9abgXm0xAa992OPQWJBs9KN3mgNENwoGQ
   group_id: 219012547
+  timeout: 20
 
 
