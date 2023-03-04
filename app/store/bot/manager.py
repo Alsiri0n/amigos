@@ -38,8 +38,8 @@ class BotManager:
         message_text = "Hello"
         for update in updates:
             # Handling new message
-            if update.type == "message_new":
-                print(f"написано было {update.object.text}")
+            if update["type"] == "message_new":
+                print(f"написано было {update['object']['message']['text']}")
                 # if update.object_message_new.text == self.start_command + "/Правила":
                 #     message_text = "Правила игры"
                 #     await self._sending_to_chat(update, message_text, KEYBOARD_TYPE["default"])
@@ -51,7 +51,7 @@ class BotManager:
                 #     await self._sending_to_chat(update, message_text, KEYBOARD_TYPE["default"])
 
             # Handling callback buttons
-            elif update.type == "message_event":
+            elif update["type"] == "message_event":
                 if update.object.payload == {"game": "rules"}:
                     message_text = "Первое правило бойцовского клуба."
                     await self._sending_to_callback(update.object.peer_id,
@@ -67,7 +67,8 @@ class BotManager:
                                                     message_text,
                                                     update.object.event_id)
                     await self._sending_to_chat(update.object.peer_id, message_text, KEYBOARD_TYPE["start"])
-                    self.start_game(game, update.object.peer_id)
+                    # await self.start_game(game, update.object.peer_id)
+                    # await
                 elif update.object.payload == {"game": "0"}:
                     cur_user = await self.app.store.games.get_user_by_vk_id(update.object.user_id)
                     await self.app.store.games.end_game()
@@ -78,7 +79,7 @@ class BotManager:
                                                     update.object.event_id)
                     await self._sending_to_chat(update.object.peer_id, message_text, KEYBOARD_TYPE["default"])
             # Handling new user to group
-            elif update.type == "group_join":
+            elif update["type"] == "group_join":
                 exists_user: User = await self.app.store.games.get_user_by_vk_id(update.object.user_id)
                 if not exists_user:
                     raw_users: [RawUser] = await self.app.store.vk_api.get_user_data([update.object.user_id])
@@ -89,22 +90,26 @@ class BotManager:
             else:
                 await self._sending_to_chat(update.object.peer_id, "", KEYBOARD_TYPE["default"])
 
+
+    async def handle_updates_rabbit(self, updates: list[Update]):
+        print(updates)
+
     async def start_game(self, game: Game, peer_id: int):
         # print(game)
-        # for cur_round in game.road_map:
-        cur_round = game.road_map[0]
-        if cur_round.status is False:
-            message: str = "================================<br>Следующий вопрос через 5 секунд!<br>================================"
-            await self._sending_to_chat(peer_id, message, KEYBOARD_TYPE["start"])
-            await asyncio.sleep(5)
-            question: Question = await self.app.store.games.get_question_by_id(cur_round.question_id)
-            await self._sending_to_chat(peer_id, question.title, KEYBOARD_TYPE["start"])
-            message: str = "У вас 20 секунд на ответ!"
-            await self._sending_to_chat(peer_id, message, KEYBOARD_TYPE["start"])
-            await self.app.store.vk_api.round_begin(10)
-            await self.app.store.games.close_roadmap_step(cur_round)
-            message: str = "Время вышло."
-            await self._sending_to_chat(peer_id, message, KEYBOARD_TYPE["start"])
+        for cur_round in game.road_map:
+        # cur_round = game.road_map[0]
+            if cur_round.status is False:
+                message: str = "================================<br>Следующий вопрос через 5 секунд!<br>================================"
+                await self._sending_to_chat(peer_id, message, KEYBOARD_TYPE["start"])
+                await asyncio.sleep(5)
+                question: Question = await self.app.store.games.get_question_by_id(cur_round.question_id)
+                await self._sending_to_chat(peer_id, question.title, KEYBOARD_TYPE["start"])
+                message: str = "У вас 20 секунд на ответ!"
+                await self._sending_to_chat(peer_id, message, KEYBOARD_TYPE["start"])
+                await self.app.store.vk_api.round_begin(10)
+                await self.app.store.games.close_roadmap_step(cur_round)
+                message: str = "Время вышло."
+                await self._sending_to_chat(peer_id, message, KEYBOARD_TYPE["start"])
         else:
             await self.app.store.games.end_game(game)
             message: str = "Игра окончена."

@@ -2,10 +2,12 @@ import json
 import random
 from typing import Optional, TYPE_CHECKING
 
+import aiormq
 from aiohttp import TCPConnector
 from aiohttp.client import ClientSession
 
 from app.base.base_accessor import BaseAccessor
+from app.rabbit.rabbit_accessor import RabbitAccessor
 from app.store.vk_api.dataclasses import (Message,
                                           MessageEvent,
                                           Update,
@@ -84,7 +86,7 @@ METHODS = {
 }
 
 
-class VkApiAccessor(BaseAccessor):
+class VkApiAccessor(RabbitAccessor):
     def __init__(self, app: "Application", *args, **kwargs):
         super().__init__(app, *args, **kwargs)
         self.session: Optional[ClientSession] = None
@@ -92,6 +94,9 @@ class VkApiAccessor(BaseAccessor):
         self.server: Optional[str] = None
         self.poller: Optional[Poller] = None
         self.ts: Optional[int] = None
+        self.connection_to_rabbit: Optional[aiormq.Connection] = None
+        self.channel: Optional[aiormq.Channel] = None
+        self.rabbit_queue: Optional[aiormq.spec.Queue] = None
 
     async def connect(self, app: "Application") -> None:
         self.session = ClientSession(connector=TCPConnector(verify_ssl=False))
@@ -102,12 +107,20 @@ class VkApiAccessor(BaseAccessor):
         self.poller = Poller(app.store)
         self.logger.info("start polling")
         await self.poller.start()
+        self.connection_to_rabbit = self.app.rabbit.connection_producer
+        # self.channel = self.app.rabbit.channel_producer
+        self.channel = await self.connection_to_rabbit.channel()
+        self.rabbit_queue = await self.channel.queue_declare("amigos")
 
     async def disconnect(self, app: "Application") -> None:
+        print("vk_api_accessor_disconnect_started")
         if self.poller:
             await self.poller.stop()
         if self.session:
             await self.session.close()
+        await self.channel.close()
+        await self.connection_to_rabbit.close()
+        print("vk_api_accessor_disconnect_ended")
 
     @staticmethod
     def _build_query(host: str, method: str, params: dict) -> str:
@@ -135,7 +148,7 @@ class VkApiAccessor(BaseAccessor):
             self.ts = data["ts"]
             self.logger.info(self.server)
 
-    async def poll(self) -> None:
+    async def poll(self) -> Optional[Update]:
         async with self.session.get(
                 self._build_query(
                     host=self.server,
@@ -152,45 +165,46 @@ class VkApiAccessor(BaseAccessor):
             self.logger.info(data)
             self.ts = data["ts"]
             raw_updates = data.get("updates", [])
-            updates = []
-            for update in raw_updates:
-                if update["type"] == EVENT_TYPE["text"]:
-                    updates.append(
-                        Update(
-                            type=EVENT_TYPE["text"],
-                            object=UpdateObjectMessageNew(
-                                id_=update["object"]["message"]["id"],
-                                user_id=update["object"]["message"]["from_id"],
-                                peer_id=update["object"]["message"]["peer_id"],
-                                text=update["object"]["message"]["text"]
-                            )
-                        )
-                    )
-                elif update["type"] == EVENT_TYPE["event"]:
-                    updates.append(
-                        Update(
-                            type=EVENT_TYPE["event"],
-                            object=UpdateObjectMessageEvent(
-                                id_=update["event_id"],
-                                user_id=update["object"]["user_id"],
-                                peer_id=update["object"]["peer_id"],
-                                event_id=update["object"]["event_id"],
-                                payload=update["object"]["payload"]
-                            )
-                        )
-                    )
-                elif update["type"] == EVENT_TYPE["join"]:
-                    updates.append(
-                        Update(
-                            type=EVENT_TYPE["join"],
-                            object=UpdateObject(
-                                id_=update["event_id"],
-                                user_id=update["object"]["user_id"],
-                                peer_id=None,
-                            )
-                        )
-                    )
-                await self.app.store.bots_manager.handle_updates(updates)
+            # updates = []
+            # for update in raw_updates:
+            #     if update["type"] == EVENT_TYPE["text"]:
+            #         updates.append(
+            #             Update(
+            #                 type=EVENT_TYPE["text"],
+            #                 object=UpdateObjectMessageNew(
+            #                     id_=update["object"]["message"]["id"],
+            #                     user_id=update["object"]["message"]["from_id"],
+            #                     peer_id=update["object"]["message"]["peer_id"],
+            #                     text=update["object"]["message"]["text"]
+            #                 )
+            #             )
+            #         )
+            #     elif update["type"] == EVENT_TYPE["event"]:
+            #         updates.append(
+            #             Update(
+            #                 type=EVENT_TYPE["event"],
+            #                 object=UpdateObjectMessageEvent(
+            #                     id_=update["event_id"],
+            #                     user_id=update["object"]["user_id"],
+            #                     peer_id=update["object"]["peer_id"],
+            #                     event_id=update["object"]["event_id"],
+            #                     payload=update["object"]["payload"]
+            #                 )
+            #             )
+            #         )
+            #     elif update["type"] == EVENT_TYPE["join"]:
+            #         updates.append(
+            #             Update(
+            #                 type=EVENT_TYPE["join"],
+            #                 object=UpdateObject(
+            #                     id_=update["event_id"],
+            #                     user_id=update["object"]["user_id"],
+            #                     peer_id=None,
+            #                 )
+            #             )
+            #         )
+            return raw_updates
+                # await self.app.store.bots_manager.handle_updates(updates)
 
     async def send_message(self, message: Message) -> None:
         async with self.session.get(
@@ -282,7 +296,3 @@ class VkApiAccessor(BaseAccessor):
                     ))
                 return raw_users
             return None
-
-    async def round_begin(self, timeout: int):
-        await self.poller.start_round_timer(timeout)
-        # await self.poller.waiting_round(t)

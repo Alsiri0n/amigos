@@ -36,11 +36,21 @@ class DatabaseConfig:
 
 
 @dataclass
+class RabbitConfig:
+    host: str = "localhost"
+    port: int = 5672
+    user: str = "guest"
+    password: str = "guest"
+    path: str = "amigos"
+
+
+@dataclass
 class Config:
     admin: AdminConfig
     session: SessionConfig = None
     bot: BotConfig = None
     database: DatabaseConfig = None
+    rabbit: RabbitConfig = None
 
 
 def setup_config(app: "Application", config_path: str):
@@ -62,4 +72,11 @@ def setup_config(app: "Application", config_path: str):
             timeout=raw_config["bot"]["timeout"],
         ),
         database=DatabaseConfig(**raw_config["database"]),
+        rabbit=RabbitConfig(
+            host=raw_config["rabbit"]["host"],
+            port=raw_config["rabbit"]["port"],
+            user=raw_config["rabbit"]["user"],
+            password=raw_config["rabbit"]["password"],
+            path=raw_config["rabbit"]["path"],
+        )
     )
