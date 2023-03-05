@@ -27,7 +27,6 @@ class Rabbit:
             port=self.app.config.rabbit.port,
             path=self.app.config.rabbit.path,
         )
-        # print(rabbit_url)
         self.connection_producer = await aiormq.connect(rabbit_url)
         self.connection_consumer = await aiormq.connect(rabbit_url)
         # self.channel_producer = await self.connection_producer.channel()

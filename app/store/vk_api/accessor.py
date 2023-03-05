@@ -73,11 +73,11 @@ KEYBOARD = {
         ]
     },
 }
-EVENT_TYPE = {
-    "text": "message_new",
-    "event": "message_event",
-    "join": "group_join",
-}
+# EVENT_TYPE = {
+#     "text": "message_new",
+#     "event": "message_event",
+#     "join": "group_join",
+# }
 METHODS = {
     "text": "messages.send",
     "callback": "messages.sendMessageEventAnswer",
@@ -94,8 +94,8 @@ class VkApiAccessor(RabbitAccessor):
         self.server: Optional[str] = None
         self.poller: Optional[Poller] = None
         self.ts: Optional[int] = None
-        self.connection_to_rabbit: Optional[aiormq.Connection] = None
-        self.channel: Optional[aiormq.Channel] = None
+        self.rabbit_connection: Optional[aiormq.Connection] = None
+        self.rabbit_channel: Optional[aiormq.Channel] = None
         self.rabbit_queue: Optional[aiormq.spec.Queue] = None
 
     async def connect(self, app: "Application") -> None:
@@ -107,10 +107,9 @@ class VkApiAccessor(RabbitAccessor):
         self.poller = Poller(app.store)
         self.logger.info("start polling")
         await self.poller.start()
-        self.connection_to_rabbit = self.app.rabbit.connection_producer
-        # self.channel = self.app.rabbit.channel_producer
-        self.channel = await self.connection_to_rabbit.channel()
-        self.rabbit_queue = await self.channel.queue_declare("amigos")
+        self.rabbit_connection = self.app.rabbit.connection_producer
+        self.rabbit_channel = await self.rabbit_connection.channel()
+        self.rabbit_queue = await self.rabbit_channel.queue_declare("amigos")
 
     async def disconnect(self, app: "Application") -> None:
         print("vk_api_accessor_disconnect_started")
@@ -118,8 +117,8 @@ class VkApiAccessor(RabbitAccessor):
             await self.poller.stop()
         if self.session:
             await self.session.close()
-        await self.channel.close()
-        await self.connection_to_rabbit.close()
+        await self.rabbit_channel.close()
+        await self.rabbit_connection.close()
         print("vk_api_accessor_disconnect_ended")
 
     @staticmethod

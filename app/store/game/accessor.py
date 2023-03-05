@@ -1,5 +1,4 @@
-import typing
-import random
+from typing import TYPE_CHECKING, Optional
 from datetime import datetime
 
 from sqlalchemy import select, update, func, and_, or_
@@ -15,16 +14,15 @@ from app.game.models import (
     Answer,
     AnswerModel,
     User,
-    UserModel, GameModel, RoadmapModel, Roadmap,
+    UserModel, GameModel, RoadmapModel, Roadmap, GameAnswersModel, StatisticModel,
 )
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     from app.web.app import Application
 
 
 class GameAccessor(BaseAccessor):
     def __init__(self, app: "Application"):
         self.app = app
-        self.current_game_id: int = -1
 
     async def get_users_count_in_db(self) -> int:
         async with self.app.database.session() as session:
@@ -127,10 +125,35 @@ class GameAccessor(BaseAccessor):
                     options(subqueryload(GameModel.game_answer))
             result: Result = await session.execute(q)
         game_model = result.scalar()
-        self.current_game_id = game_model.id
         game: Game = game_model.to_dc()
         return game
+
     # TODO создать gameanswer
+    async def save_user_answer(self, game_id: int, user_id: int, answer_id: int, answer_score: int= 0):
+        if answer_id > 0:
+            game_answers_model: GameAnswersModel = GameAnswersModel(
+                answer_id=answer_id, game_id=game_id, user_id=user_id
+            )
+            async with self.app.database.session() as session:
+                async with session.begin():
+                    session.add(game_answers_model)
+                    q = select(StatisticModel). \
+                        where(and_(StatisticModel.game_id == game_id,
+                                   StatisticModel.user_id == user_id,
+                                   StatisticModel.failures == 0)). \
+                        options(subqueryload(StatisticModel.game)). \
+                        options(subqueryload(StatisticModel.user))
+                    await session.commit()
+                result: Result = await session.execute(q)
+            statistic_model: StatisticModel = result.scalar()
+            if statistic_model:
+                statistic_model.points = statistic_model.points + answer_score
+            else:
+                statistic_model: StatisticModel = StatisticModel(
+                    points=answer_score, failures=0, game_id=game_id, user_id=user_id)
+            await self._store_statistics(statistic_model)
+        else:
+            await self._store_statistics(StatisticModel(game_id=game_id, user_id=user_id, points=answer_score, failures=1))
 
     async def create_roadmap(self, cur_game: GameModel) -> None:
         list_questions: list[Question] = await self.list_questions(2)
@@ -179,8 +202,37 @@ class GameAccessor(BaseAccessor):
                     q = update(GameModel). \
                         where(GameModel.ended_at.is_(None)). \
                         values(ended_at=datetime.now())
-            await session.execute(q)
-            await session.commit()
+                await session.execute(q)
+                await session.commit()
         # Update возвращает только result.rowcount
-        self.current_game_id = -1
-    # TODO записать статистику по игре
+
+    async def _store_statistics(self, statistic_model: StatisticModel):
+        # self, game_id: int, user_id: int, points: int, failures: bool
+        async with self.app.database.session() as session:
+            async with session.begin():
+                q = select(StatisticModel).where(and_(StatisticModel.game_id == statistic_model.game_id,
+                                                      StatisticModel.user_id == statistic_model.user_id))
+                result: Result = await session.execute(q)
+                st_model: StatisticModel = result.scalar()
+                if st_model:
+                    q = update(StatisticModel). \
+                        where(and_(StatisticModel.game_id == statistic_model.game_id,
+                                   StatisticModel.user_id == statistic_model.user_id)). \
+                        values(points=statistic_model.points, failures=statistic_model.failures)
+                    await session.execute(q)
+                else:
+                    session.add(statistic_model)
+            await session.commit()
+
+    async def get_statistics(self, game_id: int) -> list((str, str, int)):
+        async with self.app.database.session() as session:
+            async with session.begin():
+                q = select(StatisticModel). \
+                    where(StatisticModel.game_id == game_id).\
+                    options(subqueryload(StatisticModel.user))
+                result: Result = await session.execute(q)
+        statistics_model_list: [StatisticModel] = result.scalars()
+        output = []
+        for st_model in statistics_model_list:
+            output.append((st_model.user.first_name, st_model.user.last_name, st_model.points))
+        return output

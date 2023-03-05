@@ -18,15 +18,15 @@ class Poller:
 
     def _done_callback(self, future: Future):
         if future.exception():
-            self.store.vk_api.logger.exception('polling failed', exc_info=future.exception())
+            self.store.bots_manager.logger.exception('polling failed', exc_info=future.exception())
 
     async def stop(self):
-        print("bot_poller_stop_started")
+        print("app_store_bot_poller(RABBIT_CONSUMER)_stop_started")
         self.is_running = False
-        # await self.poll_task.cancel()
         if self.poll_task:
             await self.poll_task
-        print("bot_poller_stop_ended")
+            # await asyncio.wait([self.poll_task], timeout=2)
+        print("app_store_bot_poller(RABBIT_CONSUMER)_stop_ended")
 
     async def rabbit_poll(self):
         # pass
