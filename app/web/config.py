@@ -42,6 +42,7 @@ class RabbitConfig:
     user: str = "guest"
     password: str = "guest"
     path: str = "amigos"
+    queue: str = "amigos"
 
 
 @dataclass
@@ -78,5 +79,6 @@ def setup_config(app: "Application", config_path: str):
             user=raw_config["rabbit"]["user"],
             password=raw_config["rabbit"]["password"],
             path=raw_config["rabbit"]["path"],
+            queue=raw_config["rabbit"]["queue"]
         )
     )

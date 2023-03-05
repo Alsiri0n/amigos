@@ -2,6 +2,7 @@ import json
 import random
 from typing import Optional, TYPE_CHECKING
 
+import aio_pika
 import aiormq
 from aiohttp import TCPConnector
 from aiohttp.client import ClientSession
@@ -94,9 +95,9 @@ class VkApiAccessor(RabbitAccessor):
         self.server: Optional[str] = None
         self.poller: Optional[Poller] = None
         self.ts: Optional[int] = None
-        self.rabbit_connection: Optional[aiormq.Connection] = None
-        self.rabbit_channel: Optional[aiormq.Channel] = None
-        self.rabbit_queue: Optional[aiormq.spec.Queue] = None
+        self.rabbit_connection: Optional[aio_pika.Connection] = None
+        self.rabbit_channel: Optional[aio_pika.Channel] = None
+        # self.rabbit_queue: Optional[aiormq.spec.Queue] = None
 
     async def connect(self, app: "Application") -> None:
         self.session = ClientSession(connector=TCPConnector(verify_ssl=False))
@@ -109,7 +110,7 @@ class VkApiAccessor(RabbitAccessor):
         await self.poller.start()
         self.rabbit_connection = self.app.rabbit.connection_producer
         self.rabbit_channel = await self.rabbit_connection.channel()
-        self.rabbit_queue = await self.rabbit_channel.queue_declare("amigos")
+        # self.rabbit_queue = await self.rabbit_channel.queue_declare("amigos")
 
     async def disconnect(self, app: "Application") -> None:
         print("vk_api_accessor_disconnect_started")
@@ -117,8 +118,11 @@ class VkApiAccessor(RabbitAccessor):
             await self.poller.stop()
         if self.session:
             await self.session.close()
+
         await self.rabbit_channel.close()
         await self.rabbit_connection.close()
+        # await self.rabbit_channel.close()
+        # await self.rabbit_connection.close()
         print("vk_api_accessor_disconnect_ended")
 
     @staticmethod
@@ -295,3 +299,10 @@ class VkApiAccessor(RabbitAccessor):
                     ))
                 return raw_users
             return None
+
+    async def send_to_rabbit(self, message: Update):
+        # async with self.rabbit_connection:
+
+        await self.rabbit_channel.default_exchange.publish(
+            aio_pika.Message(body=bytes(json.dumps(message), "utf-8")), routing_key=self.app.config.rabbit.queue
+            )

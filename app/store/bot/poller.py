@@ -29,8 +29,8 @@ class Poller:
         print("app_store_bot_poller(RABBIT_CONSUMER)_stop_ended")
 
     async def rabbit_poll(self):
-        # pass
-        while self.is_running:
-            updates = await self.store.rabbit.poll()
-            if updates:
-                await self.store.bots_manager.handle_updates_rabbit(updates)
+        pass
+        # while self.is_running:
+        #     updates = await self.store.rabbit.poll()
+        #     if updates:
+        #         await self.store.bots_manager.handle_updates_rabbit(updates)

@@ -1,3 +1,4 @@
+import random
 from typing import TYPE_CHECKING, Optional
 from datetime import datetime
 
@@ -105,14 +106,13 @@ class GameAccessor(BaseAccessor):
                 await session.flush()
                 await session.refresh(question_model)
                 await session.commit()
-        # if not isinstance(answers[0], Answer):
 
         ans = await self.create_answers(question_id=question_model.id, answers=answers)
         question: Question = Question(answers=ans, id=question_model.id, title=title)
         return question
 
-    async def create_game(self) -> Game:
-        game_model: GameModel = GameModel(started_at=datetime.now())
+    async def create_game(self, peer_id: int) -> Game:
+        game_model: GameModel = GameModel(started_at=datetime.now(), peer_id=peer_id)
         async with self.app.database.session() as session:
             async with session.begin():
                 session.add(game_model)
@@ -129,13 +129,20 @@ class GameAccessor(BaseAccessor):
         return game
 
     # TODO создать gameanswer
-    async def save_user_answer(self, game_id: int, user_id: int, answer_id: int, answer_score: int= 0):
+    async def save_user_answer(self, game_id: int, user_id: int, answer_id: int, answer_score: int = 0):
+        # Если ответ был правильный
         if answer_id > 0:
             game_answers_model: GameAnswersModel = GameAnswersModel(
                 answer_id=answer_id, game_id=game_id, user_id=user_id
             )
             async with self.app.database.session() as session:
                 async with session.begin():
+                    # Проверим - были ли ответы раннее
+                    # Если были ответы то ничего записывать не нужно
+                    # q = select(GameAnswersModel). \
+                    #     where(and_(GameAnswersModel.game_id == game_id,
+                    #                GameAnswersModel.user_id == user_id))
+                    #
                     session.add(game_answers_model)
                     q = select(StatisticModel). \
                         where(and_(StatisticModel.game_id == game_id,
@@ -156,8 +163,9 @@ class GameAccessor(BaseAccessor):
             await self._store_statistics(StatisticModel(game_id=game_id, user_id=user_id, points=answer_score, failures=1))
 
     async def create_roadmap(self, cur_game: GameModel) -> None:
-        list_questions: list[Question] = await self.list_questions(2)
+        list_questions: list[Question] = await self.list_questions(5)
         roadmap_model_list: [RoadmapModel] = []
+        random.shuffle(list_questions)
         for question in list_questions:
             roadmap_model_list.append(
                 RoadmapModel(
@@ -188,22 +196,34 @@ class GameAccessor(BaseAccessor):
                     limit(number). \
                     options(subqueryload(QuestionModel.answers))
             result: Result = await session.execute(q)
-        questions: [Question] = result.scalars()
+        questions: [Question] = result.scalars().all()
         return questions
 
-    async def end_game(self, game: Game = None) -> None:
+    async def end_game(self, game: Game = None) -> int:
         async with self.app.database.session() as session:
             async with session.begin():
                 if game:
+                    # q = select(GameModel). \
+                    #     where(GameModel.id == game.id)
+                    # result_game_ended: Result = await session.execute(q)
                     q = update(GameModel). \
                         where(GameModel.id == game.id). \
                         values(ended_at=datetime.now())
                 else:
+                    q = select(GameModel). \
+                        where(GameModel.ended_at.is_(None))
+                    result_game_ended: Result = await session.execute(q)
+                    game_model: GameModel = result_game_ended.scalar()
                     q = update(GameModel). \
                         where(GameModel.ended_at.is_(None)). \
                         values(ended_at=datetime.now())
                 await session.execute(q)
                 await session.commit()
+
+            if game:
+                return game.id
+            else:
+                return game_model.id
         # Update возвращает только result.rowcount
 
     async def _store_statistics(self, statistic_model: StatisticModel):
@@ -228,7 +248,8 @@ class GameAccessor(BaseAccessor):
         async with self.app.database.session() as session:
             async with session.begin():
                 q = select(StatisticModel). \
-                    where(StatisticModel.game_id == game_id).\
+                    where(StatisticModel.game_id == game_id). \
+                    order_by(StatisticModel.points). \
                     options(subqueryload(StatisticModel.user))
                 result: Result = await session.execute(q)
         statistics_model_list: [StatisticModel] = result.scalars()

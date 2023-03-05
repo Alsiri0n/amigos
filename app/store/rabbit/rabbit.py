@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Optional
 
-import aiormq
-
+import aio_pika
+from aiormq.abc import URL
 
 if TYPE_CHECKING:
     from app.web.app import Application
@@ -10,16 +10,17 @@ if TYPE_CHECKING:
 class Rabbit:
     def __init__(self, app: "Application"):
         self.app = app
-        self.connection_producer: Optional[aiormq.Connection] = None
-        self.connection_consumer: Optional[aiormq.Connection] = None
-        self.channel_producer: Optional[aiormq.Channel] = None
-        self.channel_consumer: Optional[aiormq.Channel] = None
-        self.rabbit_queue_producer: Optional[aiormq.spec.Queue] = None
-        self.rabbit_queue_consumer: Optional[aiormq.spec.Queue] = None
+        self.connection_producer: Optional[aio_pika.Connection] = None
+        self.connection_consumer: Optional[aio_pika.Connection] = None
+        # self.channel: Optional[aio_pika.Channel] = None
+        # self.channel_producer: Optional[aiormq.Channel] = None
+        # self.channel_consumer: Optional[aiormq.Channel] = None
+        # self.rabbit_queue_producer: Optional[aiormq.spec.Queue] = None
+        # self.rabbit_queue_consumer: Optional[aiormq.spec.Queue] = None
         self.consume_ok = None
 
     async def connect(self, *_: list, **__: dict) -> None:
-        rabbit_url = aiormq.abc.URL.build(
+        rabbit_url = URL.build(
             scheme="amqp",
             user=self.app.config.rabbit.user,
             password=self.app.config.rabbit.password,
@@ -27,8 +28,9 @@ class Rabbit:
             port=self.app.config.rabbit.port,
             path=self.app.config.rabbit.path,
         )
-        self.connection_producer = await aiormq.connect(rabbit_url)
-        self.connection_consumer = await aiormq.connect(rabbit_url)
+        self.connection_producer = await aio_pika.connect_robust(rabbit_url)
+        # self.connection_consumer = await aio_pika.connect(rabbit_url)
+        self.connection_consumer = await aio_pika.connect_robust(rabbit_url)
         # self.channel_producer = await self.connection_producer.channel()
         # self.channel_consumer = await self.connection_consumer.channel()
         # self.rabbit_queue_producer = await self.channel_producer.queue_declare('amigos')

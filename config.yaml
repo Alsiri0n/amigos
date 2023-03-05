@@ -22,5 +22,6 @@ rabbit:
   user: alsiri0n
   password: alsiri0n
   path: /amigos
+  queue: amigos
 
 

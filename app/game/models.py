@@ -11,6 +11,7 @@ from app.store.database.sqlalchemy_base import db
 @dataclass
 class Game:
     id: int
+    peer_id: int
     started_at: datetime.datetime
     ended_at: datetime.datetime
 
@@ -68,8 +69,8 @@ class Question:
 class Answer:
     id: int
     title: str
-    question_id: int
     score: int
+    question_id: int
 
     game_answer: list["GameAnswer"] = field(default_factory=list)
 
@@ -77,6 +78,7 @@ class Answer:
 class GameModel(db):
     __tablename__ = "Game"
     id = Column(BigInteger, primary_key=True, nullable=False)
+    peer_id = Column(BigInteger, nullable=False)
     started_at = Column(DateTime)
     ended_at = Column(DateTime, nullable=True)
 
@@ -89,6 +91,7 @@ class GameModel(db):
             id=self.id,
             started_at=self.started_at,
             ended_at=self.ended_at,
+            peer_id=self.peer_id,
 
             statistic=[s.to_dc() for s in self.statistic],
             road_map=[rm.to_dc() for rm in self.road_map],

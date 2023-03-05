@@ -41,6 +41,7 @@ class Poller:
                 # channel: aiormq.Channel = self.store.vk_api.channel
                 # declare_ok = await channel.queue_declare("amigos")
                 # await channel.basic_publish(bytes(json.dumps(updates), "utf-8"))
-                await self.store.vk_api.rabbit_channel.basic_publish(bytes(json.dumps(updates), "utf-8"), routing_key='amigos')
+                # await self.store.vk_api.rabbit_channel.basic_publish(bytes(json.dumps(updates), "utf-8"), routing_key='amigos')
+                await self.store.vk_api.send_to_rabbit(updates)
                 # await channel.close()
                 #
