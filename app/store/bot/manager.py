@@ -4,9 +4,9 @@ from asyncio import Task
 from logging import getLogger
 from typing import Optional
 
-from aiormq.abc import DeliveredMessage
+# from aiormq.abc import DeliveredMessage
 
-from app.store.bot.schemes import UpdateSchema, UpdateObjectMessageNew
+# from app.store.bot.schemes import UpdateSchema, UpdateObjectMessageNew
 from app.store.bot.dataclasses import Update, UpdateObject
 from app.store.vk_api.dataclasses import Message, MessageEvent, RawUser
 from app.game.models import Question, UserModel, User, Game

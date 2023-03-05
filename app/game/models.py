@@ -89,9 +89,9 @@ class GameModel(db):
     def to_dc(self):
         return Game(
             id=self.id,
+            peer_id=self.peer_id,
             started_at=self.started_at,
             ended_at=self.ended_at,
-            peer_id=self.peer_id,
 
             statistic=[s.to_dc() for s in self.statistic],
             road_map=[rm.to_dc() for rm in self.road_map],
