@@ -205,7 +205,8 @@ class QuestionModel(db):
 class AnswerModel(db):
     __tablename__ = "Answer"
     id = Column(BigInteger, primary_key=True)
-    title = Column(Text, unique=True, nullable=False)
+    # title = Column(Text, unique=True, nullable=False)
+    title = Column(Text, nullable=False)
     score = Column(Integer, nullable=False)
 
     question_id = Column(BigInteger, ForeignKey("Question.id", ondelete="CASCADE"))
