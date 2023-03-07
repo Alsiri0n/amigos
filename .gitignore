@@ -4,6 +4,6 @@ __pycache__/
 .vscode
 .env
 .pytest_cache
-.config.yaml
-.config_test.yaml
+config.yaml
+config_test.yaml
 .env.test
