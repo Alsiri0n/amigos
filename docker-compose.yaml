@@ -30,7 +30,7 @@ services:
       - RABBIT_PORT=$RABBIT_PORT
       - RABBIT_USER=$RABBIT_USER
       - RABBIT_PASSWORD=$RABBIT_PASSWORD
-      - RABBIT_PATH=$RABBIT_PATH
+      - RABBIT_VHOST=$RABBIT_VHOST
       - RABBIT_QUEUE=$RABBIT_QUEUE
     networks:
       - alsinet
