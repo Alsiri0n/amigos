@@ -82,7 +82,7 @@ def setup_config(app: "Application", config_path: str):
             port=int(os.getenv("RABBIT_PORT")),
             user=os.getenv("RABBIT_USER"),
             password=os.getenv("RABBIT_PASSWORD"),
-            path=os.getenv("RABBIT_PATH"),
+            path="/" + os.getenv("RABBIT_PATH"),
             queue=os.getenv("RABBIT_QUEUE"),
         )
     )
