@@ -14,4 +14,4 @@ COPY boot.sh /usr/src/app/amigos/
 # COPY .env /usr/src/app/amigos/
 RUN chmod +x /usr/src/app/amigos/boot.sh
 ENTRYPOINT ["./boot.sh"]
-EXPOSE 5050
+EXPOSE 8080

@@ -1,4 +1,4 @@
-user_token: OTY3NmVjYWYtZTJhNC00NzNhLTgwM2YtZGY3OTBkYTM3YWFhXzQ2OTk=
+#user_token: OTY3NmVjYWYtZTJhNC00NzNhLTgwM2YtZGY3OTBkYTM3YWFhXzQ2OTk=
 
 session:
   key: CaY5iCkYtN7DqXdiYK1BvmGrQuaSA4Tl4bEk9my0jc0=
@@ -11,7 +11,7 @@ database:
   port: 5432
   user: gitea
   password: 3ZNrwkGCC4PWo5gEa0fm
-  database: amigos
+  name: amigos
 bot:
   token: vk1.a.xedtonh_-A4AlvsIHhDjYcHs3W_KAW_w4zbs-Vy7NNdh3lYRn1gRNfhLsA_Z-AKWgjImGSmS-hkV52W3Sln01pL3wrW2LUvz_BaZKu5IwhHdCM0Js-hTWpH4gujxl_iyROEWh4HsLNmJanPQFTfPo3wL-gTTrBCTEkuA4zGuVxLDvNJDLkrBy9abgXm0xAa992OPQWJBs9KN3mgNENwoGQ
   group_id: 219012547

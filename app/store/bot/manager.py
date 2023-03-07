@@ -162,7 +162,9 @@ class BotManager:
 
                 print(f"Пользователь {update.object.user_id} написал {update.object.message}")
                 # print(self.current_game)
-            elif update.type == EVENT_TYPE["text"] and update.object.user_id == 89191476 and update.object.message == "!startbot42":
+            elif update.type == EVENT_TYPE["text"] and \
+                    update.object.user_id == self.app.config.admin.vk_id and \
+                    update.object.message == "!startbot42":
                 await self._sending_to_chat(update.object.peer_id, "Поехали", KEYBOARD_TYPE["default"])
 
     async def start_game(self, game: Game):

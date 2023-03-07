@@ -121,8 +121,6 @@ class VkApiAccessor(RabbitAccessor):
 
         await self.rabbit_channel.close()
         await self.rabbit_connection.close()
-        # await self.rabbit_channel.close()
-        # await self.rabbit_connection.close()
         print("vk_api_accessor_disconnect_ended")
 
     @staticmethod
