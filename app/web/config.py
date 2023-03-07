@@ -42,7 +42,7 @@ class RabbitConfig:
     port: int = 5672
     user: str = "guest"
     password: str = "guest"
-    path: str = "amigos"
+    vhost: str = "amigos"
     queue: str = "amigos"
 
 
@@ -82,7 +82,7 @@ def setup_config(app: "Application", config_path: str):
             port=int(os.getenv("RABBIT_PORT")),
             user=os.getenv("RABBIT_USER"),
             password=os.getenv("RABBIT_PASSWORD"),
-            path="/" + os.getenv("RABBIT_PATH"),
+            vhost="/" + os.getenv("RABBIT_VHOST"),
             queue=os.getenv("RABBIT_QUEUE"),
         )
     )

@@ -26,7 +26,7 @@ class Rabbit:
             password=self.app.config.rabbit.password,
             host=self.app.config.rabbit.host,
             port=self.app.config.rabbit.port,
-            path=self.app.config.rabbit.path,
+            path=self.app.config.rabbit.vhost,
         )
         self.connection_producer = await aio_pika.connect_robust(rabbit_url)
         # self.connection_consumer = await aio_pika.connect(rabbit_url)
