@@ -57,7 +57,6 @@ class Config:
 
 def setup_config(app: "Application", config_path: str):
     load_dotenv(config_path)
-    # print(app.config.admin)
     app.config = Config(
         session=SessionConfig(
             key=os.getenv("SESSION_KEY")
