@@ -18,7 +18,7 @@ class AnswerSchema(Schema):
     id = fields.Int(required=False)
     title = fields.Str(required=True)
     score = fields.Int(required=True)
-    answer_id = fields.Int(required=False)
+    question_id = fields.Int(required=False)
 
 # class ThemeListSchema(Schema):
 #     themes = fields.Nested(ThemeSchema, many=True)

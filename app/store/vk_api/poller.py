@@ -3,8 +3,6 @@ import json
 from asyncio import Task, Future
 from typing import Optional
 
-import aiormq
-
 from app.store import Store
 
 
