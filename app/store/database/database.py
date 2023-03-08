@@ -4,7 +4,6 @@ from sqlalchemy import URL
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-
 from app.store.database import db
 
 if TYPE_CHECKING:
@@ -28,7 +27,6 @@ class Database:
             port=self.app.config.database.port,
             database=self.app.config.database.name,
         )
-        # database_url = f"postgresql+asyncpg://{self.app.config.database.user}:{self.app.config.database.password}@{self.app.config.database.host}:{self.app.config.database.port}/{self.app.config.database.database}"
         self._engine = create_async_engine(database_url, echo=True)
         self.session = sessionmaker(self._engine, class_=AsyncSession, expire_on_commit=False)
 

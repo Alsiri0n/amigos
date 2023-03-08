@@ -7,17 +7,19 @@ if TYPE_CHECKING:
     from app.web.app import Application
 
 
-class Rabbit:
+class Queue:
     def __init__(self, app: "Application"):
         self.app = app
-        self.connection_producer: Optional[aio_pika.Connection] = None
-        self.connection_consumer: Optional[aio_pika.Connection] = None
+        self.connection: Optional[aio_pika.Connection] = None
+
+        # self.connection_producer: Optional[aio_pika.Connection] = None
+        # self.connection_consumer: Optional[aio_pika.Connection] = None
         # self.channel: Optional[aio_pika.Channel] = None
         # self.channel_producer: Optional[aiormq.Channel] = None
         # self.channel_consumer: Optional[aiormq.Channel] = None
         # self.rabbit_queue_producer: Optional[aiormq.spec.Queue] = None
         # self.rabbit_queue_consumer: Optional[aiormq.spec.Queue] = None
-        self.consume_ok = None
+        # self.consume_ok = None
 
     async def connect(self, *_: list, **__: dict) -> None:
         rabbit_url = URL.build(
@@ -28,9 +30,11 @@ class Rabbit:
             port=self.app.config.rabbit.port,
             path=self.app.config.rabbit.vhost,
         )
-        self.connection_producer = await aio_pika.connect_robust(rabbit_url)
+        self.connection = await aio_pika.connect_robust(rabbit_url)
+
+        # self.connection_producer = await aio_pika.connect_robust(rabbit_url)
         # self.connection_consumer = await aio_pika.connect(rabbit_url)
-        self.connection_consumer = await aio_pika.connect_robust(rabbit_url)
+        # self.connection_consumer = await aio_pika.connect_robust(rabbit_url)
         # self.channel_producer = await self.connection_producer.channel()
         # self.channel_consumer = await self.connection_consumer.channel()
         # self.rabbit_queue_producer = await self.channel_producer.queue_declare('amigos')
@@ -42,6 +46,5 @@ class Rabbit:
     #     print(f"RECEIVED NEW MESSAGE {message!r}")
 
     async def disconnect(self, *_: list, **__: dict) -> None:
-        # if self.connection:
-        #     await self.connection.close()
-        pass
+        if self.connection:
+            await self.connection.close()

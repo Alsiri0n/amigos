@@ -86,7 +86,6 @@ def setup_config(app: "Application", config_path: str):
             queue=os.getenv("RABBIT_QUEUE"),
         )
     )
-    print(2)
     # with open(config_path, "r") as f:
     #     raw_config = yaml.safe_load(f)
     #

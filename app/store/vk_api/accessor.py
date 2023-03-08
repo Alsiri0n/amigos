@@ -2,13 +2,14 @@ import json
 import random
 from typing import Optional, TYPE_CHECKING
 
-import aio_pika
-import aiormq
+# import aio_pika
+# import aiormq
 from aiohttp import TCPConnector
 from aiohttp.client import ClientSession
+from logging import getLogger
 
 from app.base.base_accessor import BaseAccessor
-from app.rabbit.rabbit_accessor import RabbitAccessor
+# from app.rabbit.rabbit_accessor import RabbitAccessor
 from app.store.vk_api.dataclasses import (Message,
                                           MessageEvent,
                                           Update,
@@ -87,16 +88,16 @@ METHODS = {
 }
 
 
-class VkApiAccessor(RabbitAccessor):
+class VkApiAccessor(BaseAccessor):
     def __init__(self, app: "Application", *args, **kwargs):
         super().__init__(app, *args, **kwargs)
+        # self.app = app
         self.session: Optional[ClientSession] = None
         self.key: Optional[str] = None
         self.server: Optional[str] = None
         self.poller: Optional[Poller] = None
         self.ts: Optional[int] = None
-        self.rabbit_connection: Optional[aio_pika.Connection] = None
-        self.rabbit_channel: Optional[aio_pika.Channel] = None
+        self.logger = getLogger("VKAPI_accessor")
         # self.rabbit_queue: Optional[aiormq.spec.Queue] = None
 
     async def connect(self, app: "Application") -> None:
@@ -108,8 +109,7 @@ class VkApiAccessor(RabbitAccessor):
         self.poller = Poller(app.store)
         self.logger.info("start polling")
         await self.poller.start()
-        self.rabbit_connection = self.app.rabbit.connection_producer
-        self.rabbit_channel = await self.rabbit_connection.channel()
+
         # self.rabbit_queue = await self.rabbit_channel.queue_declare("amigos")
 
     async def disconnect(self, app: "Application") -> None:
@@ -118,9 +118,6 @@ class VkApiAccessor(RabbitAccessor):
             await self.poller.stop()
         if self.session:
             await self.session.close()
-
-        await self.rabbit_channel.close()
-        await self.rabbit_connection.close()
         print("vk_api_accessor_disconnect_ended")
 
     @staticmethod
@@ -298,9 +295,7 @@ class VkApiAccessor(RabbitAccessor):
                 return raw_users
             return None
 
-    async def send_to_rabbit(self, message: Update):
+    # async def send_to_rabbit(self, message: Update):
         # async with self.rabbit_connection:
 
-        await self.rabbit_channel.default_exchange.publish(
-            aio_pika.Message(body=bytes(json.dumps(message), "utf-8")), routing_key=self.app.config.rabbit.queue
-            )
+
