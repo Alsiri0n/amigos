@@ -31,5 +31,7 @@ class Database:
         self.session = sessionmaker(self._engine, class_=AsyncSession, expire_on_commit=False)
 
     async def disconnect(self, *_: list, **__: dict) -> None:
+        if self.session:
+            await self.session().close()
         if self._engine:
             await self._engine.dispose()

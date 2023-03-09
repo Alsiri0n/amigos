@@ -26,7 +26,7 @@ KEYBOARD = {
                 {
                     "action": {
                         "type": "callback",
-                        "payload": "{\"game\": \"1\"}",
+                        "payload": "{\"game\": \"start\"}",
                         "label": "Поехали"
                     },
                     "color": "positive"
@@ -50,8 +50,8 @@ KEYBOARD = {
                 {
                     "action": {
                         "type": "callback",
-                        "payload": "{\"game\": \"0\"}",
-                        "label": "Приехали"
+                        "payload": "{\"game\": \"end\"}",
+                        "label": "Закончить игру"
                     },
                     "color": "negative"
                 }

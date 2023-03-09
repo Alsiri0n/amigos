@@ -57,6 +57,7 @@ class BotManager:
             list_user_model = self._cast_raw_user_to_model(new_users)
             await self.app.store.games.add_users(list_user_model)
 
+
     async def handle_updates_rabbit(self, response: dict):
         update: [Update] = await self._create_update_object(response)
         if update:
@@ -68,7 +69,7 @@ class BotManager:
                                                 message_text,
                                                 update.object.event_id
                                             )
-            elif update.type == EVENT_TYPE["event"] and update.object.message == "1":
+            elif update.type == EVENT_TYPE["event"] and update.object.message == "start":
                 is_exists_game = await self.app.store.games.get_current_game(update.object.peer_id)
                 cur_user = await self.app.store.games.get_user_by_vk_id(update.object.user_id)
                 if is_exists_game:
@@ -97,7 +98,7 @@ class BotManager:
                         self.start_game(
                             self.current_game[update.object.peer_id]["game"]))
 
-            elif update.type == EVENT_TYPE["event"] and update.object.message == "0":
+            elif update.type == EVENT_TYPE["event"] and update.object.message == "end":
                 if self.current_game.get(update.object.peer_id):
                     self.game_task.cancel()
                     await self._end_game(self.current_game[update.object.peer_id]["game"],
@@ -171,7 +172,7 @@ class BotManager:
     async def start_game(self, game: Game):
         for i, cur_round in enumerate(game.road_map):
             if cur_round.status is False:
-                message: str = f"==========================================<br>" \
+                message: str = f"===========================================<br>" \
                                f"Вопрос №{i + 1}/4 будет задан через 5 секунд!<br>" \
                                f"==========================================="
                 await self._sending_to_chat(game.peer_id

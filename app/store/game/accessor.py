@@ -27,7 +27,7 @@ class GameAccessor(BaseAccessor):
     async def get_users_count_in_db(self) -> Set[int]:
         async with self.app.database.session() as session:
             q = select(UserModel.vk_id)
-        result: Result = await session.execute(q)
+            result: Result = await session.execute(q)
         user_ids = set(result.scalars().all())
         return user_ids
 
@@ -35,15 +35,14 @@ class GameAccessor(BaseAccessor):
         async with self.app.database.session() as session:
             async with session.begin():
                 session.add_all(list_users)
-            await session.commit()
+        # await session.commit()
 
     async def get_user_by_vk_id(self, vk_id: int) -> Optional[User]:
         async with self.app.database.session() as session:
-            async with session.begin():
-                q = select(UserModel). \
-                    where(UserModel.vk_id == vk_id). \
-                    options(subqueryload(UserModel.statistic)). \
-                    options(subqueryload(UserModel.game_answer))
+            q = select(UserModel). \
+                where(UserModel.vk_id == vk_id). \
+                options(subqueryload(UserModel.statistic)). \
+                options(subqueryload(UserModel.game_answer))
             result: Result = await session.execute(q)
         user_model: UserModel = result.scalar()
         if user_model:
@@ -80,14 +79,13 @@ class GameAccessor(BaseAccessor):
         :return:
         """
         async with self.app.database.session() as session:
-            async with session.begin():
-                # q = select(QuestionModel). \
-                #     limit(number). \
-                #     options(subqueryload(QuestionModel.answers)). \
-                #     options(subqueryload(QuestionModel.road_map))
-                q = select(QuestionModel). \
-                    options(subqueryload(QuestionModel.answers)). \
-                    options(subqueryload(QuestionModel.road_map))
+            # q = select(QuestionModel). \
+            #     limit(number). \
+            #     options(subqueryload(QuestionModel.answers)). \
+            #     options(subqueryload(QuestionModel.road_map))
+            q = select(QuestionModel). \
+                options(subqueryload(QuestionModel.answers)). \
+                options(subqueryload(QuestionModel.road_map))
             result: Result = await session.execute(q)
         questions: list[Question] = [q.to_dc() for q in result.scalars().all()]
         return questions
@@ -96,15 +94,15 @@ class GameAccessor(BaseAccessor):
         async with self.app.database.session() as session:
             async with session.begin():
                 q = select(AnswerModel).where(AnswerModel.question_id == question_id)
-            result: Result = await session.execute(q)
-            answer_model = result.scalar()
-            if not answer_model:
-                answer_model_list: list[AnswerModel] = []
-                for ans in answers:
-                    answer_model_list.append(
-                        AnswerModel(title=ans["title"],
-                                    score=ans["score"],
-                                    question_id=question_id))
+                result: Result = await session.execute(q)
+                answer_model = result.scalar()
+                if not answer_model:
+                    answer_model_list: list[AnswerModel] = []
+                    for ans in answers:
+                        answer_model_list.append(
+                            AnswerModel(title=ans["title"],
+                                        score=ans["score"],
+                                        question_id=question_id))
                 session.add_all(answer_model_list)
         return [answer.to_dc() for answer in answer_model_list]
 
@@ -151,7 +149,7 @@ class GameAccessor(BaseAccessor):
         async with self.app.database.session() as session:
             async with session.begin():
                 session.add_all(roadmap_model_list)
-            await session.commit()
+        # await session.commit()
 
     async def finish_roadmap_step(self, roadmap: Roadmap) -> None:
         async with self.app.database.session() as session:
@@ -161,7 +159,7 @@ class GameAccessor(BaseAccessor):
                                RoadmapModel.question_id == roadmap.question_id)). \
                     values(status=True)
             await session.execute(q)
-            await session.commit()
+            # await session.commit()
 
     async def end_game(self, peer_id: int, game: Game = None) -> int:
         async with self.app.database.session() as session:
@@ -181,19 +179,14 @@ class GameAccessor(BaseAccessor):
                     q = update(GameModel). \
                         where(GameModel.ended_at.is_(None)). \
                         values(ended_at=datetime.now())
-                await session.execute(q)
-                await session.commit()
+            await session.execute(q)
+            await session.commit()
             if game:
                 return game.id
             else:
                 return game_model.id
 
-    async def save_user_answer(self,
-                               game_id: int,
-                               user_id: int,
-                               answer_id: int,
-                               answer_score: int = 0
-                               ) -> None:
+    async def save_user_answer(self, game_id: int, user_id: int, answer_id: int, answer_score: int = 0) -> None:
         async with self.app.database.session() as session:
             async with session.begin():
                 # Если ответ был правильный, записываем в таблицу game_answers
@@ -228,12 +221,12 @@ class GameAccessor(BaseAccessor):
 
     async def get_statistics(self, game_id: int) -> list[(str, str, int)]:
         async with self.app.database.session() as session:
-            async with session.begin():
-                q = select(StatisticModel). \
-                    where(StatisticModel.game_id == game_id). \
-                    order_by(StatisticModel.points.desc()). \
-                    options(subqueryload(StatisticModel.user))
-                result: Result = await session.execute(q)
+            q = select(StatisticModel). \
+                where(StatisticModel.game_id == game_id). \
+                order_by(StatisticModel.points.desc()). \
+                options(subqueryload(StatisticModel.user))
+            result: Result = await session.execute(q)
+            # await session.commit()
         statistics_model_list = result.scalars().all()
         output = []
         for st_model in statistics_model_list:
@@ -242,21 +235,19 @@ class GameAccessor(BaseAccessor):
 
     async def get_user_failures(self, game_id: int, user_id: int) -> int:
         async with self.app.database.session() as session:
-            async with session.begin():
-                q = select(StatisticModel). \
-                    where(StatisticModel.game_id == game_id). \
-                    where(StatisticModel.user_id == user_id)
-                result: Result = await session.execute(q)
+            q = select(StatisticModel). \
+                where(StatisticModel.game_id == game_id). \
+                where(StatisticModel.user_id == user_id)
+            result: Result = await session.execute(q)
         statistics_model_list = result.scalar()
         return statistics_model_list.failures
 
     # Для проверки того, что игра не была запущена одновременно несколькими участниками
     async def get_current_game(self, peer_id: int) -> Optional[int]:
         async with self.app.database.session() as session:
-            async with session.begin():
-                q = select(GameModel). \
-                    where(GameModel.peer_id == peer_id). \
-                    where(GameModel.ended_at.is_(None))
+            q = select(GameModel). \
+                where(GameModel.peer_id == peer_id). \
+                where(GameModel.ended_at.is_(None))
             result_game_ended: Result = await session.execute(q)
         game_model: GameModel = result_game_ended.scalar()
         if game_model:
@@ -279,3 +270,4 @@ class GameAccessor(BaseAccessor):
                     await session.execute(q)
                 else:
                     session.add(statistic_model)
+            # await session.commit()

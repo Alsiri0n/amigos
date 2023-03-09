@@ -1,3 +1,5 @@
+import asyncio
+
 import aio_pika
 import json
 
