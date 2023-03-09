@@ -2,7 +2,7 @@ import typing
 
 
 from app.store.database.database import Database
-from app.store.queue.queue import Queue
+# from app.store.queue.queue import Queue
 
 
 if typing.TYPE_CHECKING:
@@ -28,15 +28,5 @@ def setup_store(app: "Application"):
     app.database = Database(app)
     app.on_startup.append(app.database.connect)
     app.on_cleanup.append(app.database.disconnect)
-    app.queue = Queue(app)
-    app.on_startup.append(app.queue.connect)
-    app.on_cleanup.append(app.queue.disconnect)
 
     app.store = Store(app)
-
-
-
-
-
-
-

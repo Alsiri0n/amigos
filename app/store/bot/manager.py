@@ -1,7 +1,7 @@
 import asyncio
 import typing
 
-from asyncio import Task
+from asyncio import Task, Future
 from logging import getLogger
 from typing import Optional
 from Levenshtein import distance
@@ -33,8 +33,8 @@ class BotManager:
         self.logger = getLogger("handler")
         self.start_command = f"[club{self.app.config.bot.group_id}|@club{self.app.config.bot.group_id}] "
         app.on_startup.append(self.connect)
-        # self.current_game
-        # 11111 as peer_id: {
+        # Формат self.current_game
+        # Key - 11111 (peer_id): {
         # "game": Game,
         # "current_question": Question,
         # "current_user_answers": set(str) = set(),
@@ -48,6 +48,7 @@ class BotManager:
         # Получаем количество пользователей в базе
         cnt = await self.app.store.games.get_users_count_in_db()
         # Получаем список пользователей из вк
+        # TODO сделать через set difference и избавиться от offset
         raw_users: [RawUser] = await self.app.store.vk_api.get_community_members(cnt)
         # Заносим пользователей в базу
         if raw_users:
@@ -122,7 +123,6 @@ class BotManager:
                     current_user: User = await self.app.store.games.get_user_by_vk_id(update.object.user_id)
                     for a in self.current_game[update.object.peer_id]["current_question"].answers:
                         if update.object.message.lower() not in self.current_game[update.object.peer_id]["current_user_answers"]:
-                            # if a.title.lower() == update.object.message.lower():
                             user_answer = update.object.message.lower()
                             correct_answer = a.title.lower()
                             # Если длина ответа от 3 до 6 символов и расстояние Левенштейна 0-2
@@ -161,7 +161,6 @@ class BotManager:
                             self.current_game[update.object.peer_id]["current_game_over_users"].append(current_user.vk_id)
 
                 print(f"Пользователь {update.object.user_id} написал {update.object.message}")
-                # print(self.current_game)
             elif update.type == EVENT_TYPE["text"] and \
                     update.object.user_id == self.app.config.admin.vk_id and \
                     update.object.message == "!startbot42":
@@ -171,7 +170,7 @@ class BotManager:
         for i, cur_round in enumerate(game.road_map):
             if cur_round.status is False:
                 message: str = f"==========================================<br>" \
-                               f"Вопрос № {i + 1} будет задан через 5 секунд!<br>" \
+                               f"Вопрос №{i + 1}/4 будет задан через 5 секунд!<br>" \
                                f"==========================================="
                 await self._sending_to_chat(game.peer_id
                                             , message, KEYBOARD_TYPE["start"])
@@ -182,7 +181,7 @@ class BotManager:
                 await self._sending_to_chat(game.peer_id, message, KEYBOARD_TYPE["start"])
 
                 await asyncio.sleep(20)
-                await self.app.store.games.close_roadmap_step(cur_round)
+                await self.app.store.games.finish_roadmap_step(cur_round)
 
                 message: str = "Время вышло."
                 await self._sending_to_chat(game.peer_id, message, KEYBOARD_TYPE["start"])
@@ -259,7 +258,6 @@ class BotManager:
     async def _sending_to_callback(self, peer_id: int, user_id: int, message: str, event_id: str):
         await self.app.store.vk_api.send_event(
             MessageEvent(
-                # peer_id=update.object.peer_id,
                 peer_id=peer_id,
                 # user_id=update.object.user_id,
                 user_id=user_id,
@@ -269,7 +267,8 @@ class BotManager:
         )
 
     # Преобразуем пользователей из вк в нашу модель пользователя
-    def _cast_raw_user_to_usermodel(self, raw_users: [RawUser]) -> [UserModel]:
+    @staticmethod
+    def _cast_raw_user_to_usermodel(raw_users: list[RawUser]) -> list[UserModel]:
         list_user_model: [UserModel] = []
         for user in raw_users:
             list_user_model.append(
@@ -282,7 +281,8 @@ class BotManager:
         return list_user_model
 
     # Правильное множественное число до 1000
-    def _case_word(self, n: int) -> str:
+    @staticmethod
+    def _case_word(n: int) -> str:
         d = n % 10
         h = n % 100
         if d == 1 and h != 11:

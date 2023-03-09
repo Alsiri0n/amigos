@@ -82,35 +82,7 @@ def setup_config(app: "Application", config_path: str):
             port=int(os.getenv("RABBIT_PORT")),
             user=os.getenv("RABBIT_USER"),
             password=os.getenv("RABBIT_PASSWORD"),
-            vhost="/" + os.getenv("RABBIT_VHOST"),
+            vhost=os.getenv("RABBIT_VHOST"),
             queue=os.getenv("RABBIT_QUEUE"),
         )
     )
-    # with open(config_path, "r") as f:
-    #     raw_config = yaml.safe_load(f)
-    #
-    #
-    # app.config = Config(
-    #     session=SessionConfig(
-    #         key=raw_config["session"]["key"],
-    #     ),
-    #     admin=AdminConfig(
-    #         email=raw_config["admin"]["email"],
-    #         password=raw_config["admin"]["password"],
-    #         vk_id=raw_config["admin"]["vk_id"],
-    #     ),
-    #     bot=BotConfig(
-    #         token=raw_config["bot"]["token"],
-    #         group_id=raw_config["bot"]["group_id"],
-    #         timeout=raw_config["bot"]["timeout"],
-    #     ),
-    #     database=DatabaseConfig(**raw_config["database"]),
-    #     rabbit=RabbitConfig(
-    #         host=raw_config["rabbit"]["host"],
-    #         port=raw_config["rabbit"]["port"],
-    #         user=raw_config["rabbit"]["user"],
-    #         password=raw_config["rabbit"]["password"],
-    #         path=raw_config["rabbit"]["path"],
-    #         queue=raw_config["rabbit"]["queue"]
-    #     )
-    # )
