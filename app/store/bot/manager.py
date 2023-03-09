@@ -33,7 +33,7 @@ class BotManager:
         self.logger = getLogger("handler")
         self.start_command = f"[club{self.app.config.bot.group_id}|@club{self.app.config.bot.group_id}] "
         app.on_startup.append(self.connect)
-        # Формат self.current_game
+        # Формат self.current_game для хранения текущего состояния игры
         # Key - 11111 (peer_id): {
         # "game": Game,
         # "current_question": Question,
@@ -147,7 +147,7 @@ class BotManager:
                                                                     user_id=current_user.id,
                                                                     answer_id=-1,
                                                                     answer_score=0)
-                        failures = await self.app.store.games.get_statistics_for_user(
+                        failures = await self.app.store.games.get_user_failures(
                             self.current_game[update.object.peer_id]["game"].id,
                             current_user.id)
                         if failures == 5:
