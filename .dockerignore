@@ -1,0 +1,10 @@
+.github
+.venv
+__pycache__/
+.idea
+.vscode
+tests
+.env*
+.pytest_cache
+config.yaml
+config_test.yaml
