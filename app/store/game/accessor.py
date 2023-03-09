@@ -1,5 +1,5 @@
 import random
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Set
 from datetime import datetime
 
 from sqlalchemy import select, update, func, and_
@@ -24,18 +24,17 @@ class GameAccessor(BaseAccessor):
     def __init__(self, app: "Application", *args, **kwargs):
         super().__init__(app, *args, **kwargs)
 
-    async def get_users_count_in_db(self) -> int:
+    async def get_users_count_in_db(self) -> Set[int]:
         async with self.app.database.session() as session:
-            q = select(func.count(UserModel.id))
-            result: Result = await session.execute(q)
-        cnt_users = result.scalar()
-        return cnt_users
+            q = select(UserModel.vk_id)
+        result: Result = await session.execute(q)
+        user_ids = set(result.scalars().all())
+        return user_ids
 
     async def add_users(self, list_users: list[UserModel]) -> None:
         async with self.app.database.session() as session:
             async with session.begin():
-                for user in list_users:
-                    session.add(user)
+                session.add_all(list_users)
             await session.commit()
 
     async def get_user_by_vk_id(self, vk_id: int) -> Optional[User]:
@@ -107,7 +106,6 @@ class GameAccessor(BaseAccessor):
                                     score=ans["score"],
                                     question_id=question_id))
                 session.add_all(answer_model_list)
-            # await session.commit()
         return [answer.to_dc() for answer in answer_model_list]
 
     async def create_question(self, title: str, answers: list[dict]) -> Question:
@@ -149,8 +147,7 @@ class GameAccessor(BaseAccessor):
                 RoadmapModel(
                     status=False,
                     game_id=cur_game.id,
-                    question_id=question.id)
-            )
+                    question_id=question.id))
         async with self.app.database.session() as session:
             async with session.begin():
                 session.add_all(roadmap_model_list)
@@ -167,10 +164,10 @@ class GameAccessor(BaseAccessor):
             await session.commit()
 
     async def end_game(self, peer_id: int, game: Game = None) -> int:
-        # Update возвращает только result.rowcount
         async with self.app.database.session() as session:
             async with session.begin():
                 if game:
+                    # Update возвращает только result.rowcount
                     q = update(GameModel). \
                         where(GameModel.id == game.id). \
                         where(GameModel.peer_id == peer_id). \
@@ -206,12 +203,11 @@ class GameAccessor(BaseAccessor):
                     )
                     session.add(game_answers_model)
                 # Получаем статистику, для записи в таблицу statistic
-                q = select(StatisticModel). \
-                    where(and_(StatisticModel.game_id == game_id,
-                               StatisticModel.user_id == user_id)). \
-                    options(subqueryload(StatisticModel.game)). \
-                    options(subqueryload(StatisticModel.user))
-                await session.commit()
+            q = select(StatisticModel). \
+                where(and_(StatisticModel.game_id == game_id,
+                           StatisticModel.user_id == user_id)). \
+                options(subqueryload(StatisticModel.game)). \
+                options(subqueryload(StatisticModel.user))
             result: Result = await session.execute(q)
         statistic_model: StatisticModel = result.scalar()
         # Если уже есть статистика, то добавляем изменения в текущую статистику игры
@@ -283,4 +279,3 @@ class GameAccessor(BaseAccessor):
                     await session.execute(q)
                 else:
                     session.add(statistic_model)
-            await session.commit()

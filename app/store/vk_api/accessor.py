@@ -196,7 +196,7 @@ class VkApiAccessor(BaseAccessor):
             self.logger.info(data)
 
     # Получаем список id участников сообщества
-    async def get_community_members(self, offset: int) -> list[RawUser] | None:
+    async def get_community_members(self) -> list[RawUser] | None:
         async with self.session.get(
                 self._build_query(
                     host=API_PATH,
@@ -205,8 +205,7 @@ class VkApiAccessor(BaseAccessor):
                         "access_token": self.app.config.bot.token,
                         "group_id": self.app.config.bot.group_id,
                         "sort": "time_desc",
-                        "offset": offset,
-                        "fields": list,
+                        "fields": "lists",
                     },
                 )
         ) as resp:

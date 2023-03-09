@@ -1,7 +1,7 @@
 import asyncio
 import typing
 
-from asyncio import Task, Future
+from asyncio import Task
 from logging import getLogger
 from typing import Optional
 from Levenshtein import distance
@@ -45,14 +45,16 @@ class BotManager:
 
     # При запуске бота заполняем бд пользователями из сообщества
     async def connect(self, app: "Application"):
-        # Получаем количество пользователей в базе
-        cnt = await self.app.store.games.get_users_count_in_db()
+        # Получаем vk_id пользователей уже имеющихся в базе
+        users_from_db = await self.app.store.games.get_users_count_in_db()
         # Получаем список пользователей из вк
-        # TODO сделать через set difference и избавиться от offset
-        raw_users: [RawUser] = await self.app.store.vk_api.get_community_members(cnt)
-        # Заносим пользователей в базу
-        if raw_users:
-            list_user_model = self._cast_raw_user_to_usermodel(raw_users)
+        users_from_vk: [RawUser] = await self.app.store.vk_api.get_community_members()
+        users_id_from_vk = {u.id_ for u in users_from_vk}
+        id_need_to_add = users_id_from_vk - users_from_db
+        # Добавляем новых пользователей в базу
+        if id_need_to_add:
+            new_users = [u for u in users_from_vk if u.id_ in id_need_to_add]
+            list_user_model = self._cast_raw_user_to_model(new_users)
             await self.app.store.games.add_users(list_user_model)
 
     async def handle_updates_rabbit(self, response: dict):
@@ -112,7 +114,7 @@ class BotManager:
                 exists_user: User = await self.app.store.games.get_user_by_vk_id(update.object.user_id)
                 if not exists_user:
                     raw_users: [RawUser] = await self.app.store.vk_api.get_user_data([update.object.user_id])
-                    list_user_model = self._cast_raw_user_to_usermodel(raw_users)
+                    list_user_model = self._cast_raw_user_to_model(raw_users)
                     await self.app.store.games.add_users(list_user_model)
             # Сообщение пользователя во время игры
             elif update.type == EVENT_TYPE["text"] and self.current_game.get(update.object.peer_id):
@@ -174,10 +176,12 @@ class BotManager:
                                f"==========================================="
                 await self._sending_to_chat(game.peer_id
                                             , message, KEYBOARD_TYPE["start"])
-                self.current_game[game.peer_id]["current_question"]: Question = await self.app.store.games.get_question_by_id(cur_round.question_id)
+                self.current_game[game.peer_id]["current_question"]: Question = \
+                    await self.app.store.games.get_question_by_id(cur_round.question_id)
                 await asyncio.sleep(5)
 
-                message: str = f"{self.current_game[game.peer_id]['current_question'].title.upper()}<br>У вас 20 секунд на ответ!"
+                message: str = f"{self.current_game[game.peer_id]['current_question'].title.upper()}<br>" \
+                               f"У вас 20 секунд на ответ!"
                 await self._sending_to_chat(game.peer_id, message, KEYBOARD_TYPE["start"])
 
                 await asyncio.sleep(20)
@@ -206,7 +210,8 @@ class BotManager:
         if game:
             self.current_game.pop(peer_id)
 
-    async def _create_update_object(self, data: dict) -> Optional[Update]:
+    @staticmethod
+    async def _create_update_object(data: dict) -> Optional[Update]:
         # Новое сообщение
         if data["type"] == "message_new":
             update: Update = Update(
@@ -268,7 +273,7 @@ class BotManager:
 
     # Преобразуем пользователей из вк в нашу модель пользователя
     @staticmethod
-    def _cast_raw_user_to_usermodel(raw_users: list[RawUser]) -> list[UserModel]:
+    def _cast_raw_user_to_model(raw_users: list[RawUser]) -> list[UserModel]:
         list_user_model: [UserModel] = []
         for user in raw_users:
             list_user_model.append(
