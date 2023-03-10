@@ -44,7 +44,7 @@ KEYBOARD = {
             ]
         ]
     },
-    "keyboard_game": {
+    "keyboard_in_game": {
         "buttons": [
             [
                 {

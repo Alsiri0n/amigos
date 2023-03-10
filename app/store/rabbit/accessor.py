@@ -38,7 +38,7 @@ class RabbitAccessor(BaseAccessor):
 
     async def on_message(self, message):
         if message:
-            await self.app.store.bots_manager.handle_updates_rabbit(json.loads(message.body.decode())[0])
+            await self.app.store.bots_manager.handle_updates(json.loads(message.body.decode())[0])
 
     async def disconnect(self, app: "Application"):
         await self.rabbit_channel.close()

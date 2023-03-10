@@ -243,7 +243,7 @@ class GameAccessor(BaseAccessor):
         return statistics_model_list.failures
 
     # Для проверки того, что игра не была запущена одновременно несколькими участниками
-    async def get_current_game(self, peer_id: int) -> Optional[int]:
+    async def get_current_game(self, peer_id: int) -> bool:
         async with self.app.database.session() as session:
             q = select(GameModel). \
                 where(GameModel.peer_id == peer_id). \
@@ -251,9 +251,9 @@ class GameAccessor(BaseAccessor):
             result_game_ended: Result = await session.execute(q)
         game_model: GameModel = result_game_ended.scalar()
         if game_model:
-            return game_model.id
+            return True
         else:
-            return None
+            return False
 
     async def _store_statistics(self, statistic_model: StatisticModel):
         async with self.app.database.session() as session:

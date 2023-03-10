@@ -6,29 +6,13 @@ from logging import getLogger
 from typing import Optional
 from Levenshtein import distance
 
-
-from app.store.bot.dataclasses import Update, UpdateObject
+from app.store.bot.dataclasses import Update, UpdateObject, KeyboardType, UpdateType, EventType
 from app.store.vk_api.dataclasses import Message, MessageEvent, RawUser
-from app.game.models import Question, UserModel, User, Game
-
+from app.game.models import UserModel, User, Game, GameEntity
 
 if typing.TYPE_CHECKING:
     from app.web.app import Application
 
-KEYBOARD_TYPE = {
-    "default": "keyboard_default",
-    "start": "keyboard_game",
-}
-MESSAGE_TYPE = {
-    "text": "message_new",
-    "event": "message_event",
-    "join": "group_join",
-}
-EVENT_TYPE = {
-    1: "rules",
-    2: "start",
-    3: "end",
-}
 
 class BotManager:
     def __init__(self, app: "Application"):
@@ -37,14 +21,7 @@ class BotManager:
         self.logger = getLogger("handler")
         self.start_command = f"[club{self.app.config.bot.group_id}|@club{self.app.config.bot.group_id}] "
         app.on_startup.append(self.connect)
-        # Формат self.current_game для хранения текущего состояния игры
-        # Key - 11111 (peer_id): {
-        # "game": Game,
-        # "current_question": Question,
-        # "current_user_answers": set(str) = set(),
-        # "current_game_over_users": []
-        # }
-        self.current_game: dict = {}
+        self.games: dict[int, GameEntity] = {}
         self.game_task: Optional[Task] = None
 
     # При запуске бота заполняем бд пользователями из сообщества
@@ -61,143 +38,83 @@ class BotManager:
             list_user_model = self._cast_raw_user_to_model(new_users)
             await self.app.store.games.add_users(list_user_model)
 
-
-    async def handle_updates_rabbit(self, response: dict):
+    async def handle_updates(self, response: dict):
         update: [Update] = await self._create_update_object(response)
+        # Если произошло только то, событие которое мы отслеживаем
         if update:
-            if update.type == MESSAGE_TYPE["event"] and update.object.message == EVENT_TYPE[1]:
-                message_text = "Первое правило бойцовского клуба."
-                await self._sending_to_callback(
-                                                update.object.peer_id,
-                                                update.object.user_id,
-                                                message_text,
-                                                update.object.event_id
-                                            )
-            elif update.type == MESSAGE_TYPE["event"] and update.object.message == EVENT_TYPE[2]:
-                is_exists_game = await self.app.store.games.get_current_game(update.object.peer_id)
-                cur_user = await self.app.store.games.get_user_by_vk_id(update.object.user_id)
-                if is_exists_game:
-                    message_text = f"Игра уже была запущена."
-                    await self._sending_to_chat(update.object.peer_id, message_text, KEYBOARD_TYPE["start"])
-                    await self._sending_to_callback(update.object.peer_id,
-                                                    update.object.user_id,
-                                                    message_text,
-                                                    update.object.event_id)
-                else:
-                    game: Game = await self.app.store.games.create_game(update.object.peer_id)
-                    self.current_game[update.object.peer_id] = {
-                        "game": game,
-                        "current_question": None,
-                        "current_user_answers": set(),
-                        "current_game_over_users": []
-                        }
-                    message_text = f"Участник {cur_user.first_name} {cur_user.last_name} запустил игру."
-                    await self._sending_to_callback(update.object.peer_id,
-                                                    update.object.user_id,
-                                                    message_text,
-                                                    update.object.event_id)
-                    await self._sending_to_chat(update.object.peer_id, message_text, KEYBOARD_TYPE["start"])
-                    # ЭТО САМАЯ СЛОЖНАЯ СТРОЧКА В МОЕЙ ЖИЗНИ!
-                    self.game_task = asyncio.create_task(
-                        self.start_game(
-                            self.current_game[update.object.peer_id]["game"]))
-
-            elif update.type == MESSAGE_TYPE["event"] and update.object.message == EVENT_TYPE[3]:
-                if self.current_game.get(update.object.peer_id):
-                    self.game_task.cancel()
-                    await self._end_game(self.current_game[update.object.peer_id]["game"],
-                                         peer_id=update.object.peer_id,
-                                         user_id=update.object.user_id,
-                                         event_id=update.object.event_id)
-                else:
-                    await self._end_game(None,
-                                         peer_id=update.object.peer_id,
-                                         user_id=update.object.user_id,
-                                         event_id=update.object.event_id)
-
-            elif update.type == MESSAGE_TYPE["join"]:
-                exists_user: User = await self.app.store.games.get_user_by_vk_id(update.object.user_id)
-                if not exists_user:
-                    raw_users: [RawUser] = await self.app.store.vk_api.get_user_data([update.object.user_id])
-                    list_user_model = self._cast_raw_user_to_model(raw_users)
-                    await self.app.store.games.add_users(list_user_model)
+            # Нажали кнопку правила
+            if update.type == UpdateType.EVENT and update.object.payload == EventType.RULES:
+                await self._send_rules(update.object.peer_id, update.object.user_id, update.object.event_id)
+            # Нажали кнопку начало игры
+            elif update.type == UpdateType.EVENT and update.object.payload == EventType.START:
+                await self.start_button(update.object.peer_id, update.object.user_id, update.object.event_id)
+            # Нажали кнопку закончить игру
+            elif update.type == UpdateType.EVENT and update.object.payload == EventType.FINISH:
+                await self.finish_button(update.object.peer_id, update.object.user_id, update.object.event_id)
+            elif update.type == UpdateType.JOIN:
+                await self._add_new_user(update.object.user_id)
             # Сообщение пользователя во время игры
-            elif update.type == MESSAGE_TYPE["text"] and self.current_game.get(update.object.peer_id):
-                # Проверяем что пользователь ещё не проиграл
-                if (update.object.user_id not in self.current_game[update.object.peer_id]["current_game_over_users"] and
-                    self.current_game[update.object.peer_id].get("current_question")
-                ):
-                    current_user: User = await self.app.store.games.get_user_by_vk_id(update.object.user_id)
-                    for a in self.current_game[update.object.peer_id]["current_question"].answers:
-                        if update.object.message.lower() not in self.current_game[update.object.peer_id]["current_user_answers"]:
-                            user_answer = update.object.message.lower()
-                            correct_answer = a.title.lower()
-                            # Если длина ответа от 3 до 6 символов и расстояние Левенштейна 0-2
-                            # Если длина ответа больше 6 символов и расстояние Левенштейна = 3
-                            if (len(user_answer) < 7 and distance(user_answer, correct_answer) < 3) or (
-                                    len(user_answer) >= 6 and distance(user_answer, correct_answer) < 3
-                            ):
-                                await self.app.store.games.save_user_answer(game_id=self.current_game[update.object.peer_id]["game"].id,
-                                                                            user_id=current_user.id,
-                                                                            answer_id=a.id,
-                                                                            answer_score=a.score,
-                                                                            )
-                                self.current_game[update.object.peer_id]["current_user_answers"].add(update.object.message.lower())
-                                message = f"Пользователь " \
-                                          f"{current_user.first_name} {current_user.last_name}" \
-                                          f" заработал {self._case_word(a.score)}."
-                                await self._sending_to_chat(update.object.peer_id, message, KEYBOARD_TYPE["start"])
-                                break
-                    else:
-                        # Неверный ответ
-                        await self.app.store.games.save_user_answer(game_id=self.current_game[update.object.peer_id]["game"].id,
-                                                                    user_id=current_user.id,
-                                                                    answer_id=-1,
-                                                                    answer_score=0)
-                        failures = await self.app.store.games.get_user_failures(
-                            self.current_game[update.object.peer_id]["game"].id,
-                            current_user.id)
-                        if failures == 5:
-                            message = f"{current_user.first_name} {current_user.last_name} мы вас услышали."
-                        else:
-                            message = f"Пользователь " \
-                                      f"{current_user.first_name} {current_user.last_name} ответил неправильно." \
-                                      f"<br>Это {failures} промах из 5."
-                        await self._sending_to_chat(update.object.peer_id, message, KEYBOARD_TYPE["start"])
-                        if failures == 5:
-                            self.current_game[update.object.peer_id]["current_game_over_users"].append(current_user.vk_id)
-
-                print(f"Пользователь {update.object.user_id} написал {update.object.message}")
-            elif update.type == MESSAGE_TYPE["text"] and \
+            elif update.type == UpdateType.TEXT and self.games.get(update.object.peer_id):
+                # Проверяем что пользователь ещё не проиграл и такого ответа ещё не было
+                if (update.object.user_id not in self.games.get(update.object.peer_id).game_over_users and
+                        update.object.message.lower() not in self.games[update.object.peer_id].past_user_answers):
+                    await self._user_answer(update.object.peer_id, update.object.user_id, update.object.message.lower())
+            # (ре)Активация бота
+            elif update.type == UpdateType.TEXT and \
                     update.object.user_id == self.app.config.admin.vk_id and \
                     update.object.message == "!startbot42":
-                await self._sending_to_chat(update.object.peer_id, "Поехали", KEYBOARD_TYPE["default"])
+                await self._sending_to_chat(update.object.peer_id, "Поехали", KeyboardType.DEFAULT.value)
 
-    async def start_game(self, game: Game):
+    async def start_button(self, peer_id: int, user_id: int, event_id: str):
+        is_exists_game = await self.app.store.games.get_current_game(peer_id)
+        cur_user = await self.app.store.games.get_user_by_vk_id(user_id)
+        if is_exists_game:
+            message_text = f"Игра уже была запущена."
+            await self._sending_to_chat(peer_id, message_text, KeyboardType.START.value)
+            await self._sending_to_callback(peer_id, user_id, message_text, event_id)
+        else:
+            game: Game = await self.app.store.games.create_game(peer_id)
+            self.games[peer_id] = GameEntity(
+                game=game,
+                current_question=None,
+                past_user_answers=set(),
+                game_over_users=[])
+            message_text = f"Участник {cur_user.first_name} {cur_user.last_name} запустил игру."
+            await self._sending_to_callback(peer_id, user_id, message_text, event_id)
+            await self._sending_to_chat(peer_id, message_text, KeyboardType.START.value)
+            self.game_task = asyncio.create_task(self._game_play(self.games[peer_id].game))
+
+    async def _game_play(self, game: Game):
         for i, cur_round in enumerate(game.road_map):
             if cur_round.status is False:
-                message: str = f"===========================================<br>" \
+                message: str = f"{'='*43}<br>" \
                                f"Вопрос №{i + 1}/4 будет задан через 5 секунд!<br>" \
-                               f"==========================================="
-                await self._sending_to_chat(game.peer_id
-                                            , message, KEYBOARD_TYPE["start"])
-                self.current_game[game.peer_id]["current_question"]: Question = \
-                    await self.app.store.games.get_question_by_id(cur_round.question_id)
+                               f"{'='*43}"
+                await self._sending_to_chat(game.peer_id, message, KeyboardType.START.value)
+                self.games[game.peer_id].current_question = await self.app.store.games.get_question_by_id(cur_round.question_id)
                 await asyncio.sleep(5)
-
-                message: str = f"{self.current_game[game.peer_id]['current_question'].title.upper()}<br>" \
+                message: str = f"{self.games[game.peer_id].current_question.title.upper()}<br>" \
                                f"У вас 20 секунд на ответ!"
-                await self._sending_to_chat(game.peer_id, message, KEYBOARD_TYPE["start"])
+                await self._sending_to_chat(game.peer_id, message, KeyboardType.START.value)
 
                 await asyncio.sleep(20)
                 await self.app.store.games.finish_roadmap_step(cur_round)
 
                 message: str = "Время вышло."
-                await self._sending_to_chat(game.peer_id, message, KEYBOARD_TYPE["start"])
+                await self._sending_to_chat(game.peer_id, message, KeyboardType.START.value)
                 # Очищаем ответы пользователей для следующего раунда
-                self.current_game[game.peer_id]["current_user_answers"] = set()
+                self.games[game.peer_id].past_user_answers.clear()
         else:
             await self._end_game(game, game.peer_id)
+
+    async def finish_button(self, peer_id: int, user_id: int, event_id: str):
+        # Если игра существует
+        if self.games.get(peer_id):
+            self.game_task.cancel()
+            await self._end_game(self.games[peer_id].game, peer_id=peer_id, user_id=user_id, event_id=event_id)
+        # Если было зависание и нужно закрыть игру
+        else:
+            await self._end_game(None, peer_id=peer_id, user_id=user_id, event_id=event_id)
 
     async def _end_game(self, game: Optional[Game], peer_id: int, user_id: int = None, event_id: str = None):
         game_id: int = await self.app.store.games.end_game(peer_id=peer_id, game=game)
@@ -206,22 +123,66 @@ class BotManager:
             cur_user = await self.app.store.games.get_user_by_vk_id(user_id)
             message: str = f"Участник {cur_user.first_name} {cur_user.last_name} закончил игру досрочно."
             await self._sending_to_callback(peer_id, user_id, message, event_id)
-        await self._sending_to_chat(peer_id, message, KEYBOARD_TYPE["default"])
+        await self._sending_to_chat(peer_id, message, KeyboardType.DEFAULT.value)
         statistics = await self.app.store.games.get_statistics(game_id=game_id)
         message: str = "Результаты игры"
         for st in statistics:
             message += f"<br>{st[0]} {st[1]} заработал {self._case_word(st[2])}."
-        await self._sending_to_chat(peer_id, message, KEYBOARD_TYPE["default"])
+        await self._sending_to_chat(peer_id, message, KeyboardType.DEFAULT.value)
         if game:
-            self.current_game.pop(peer_id)
+            self.games.pop(peer_id)
+
+    async def _add_new_user(self, user_id: int):
+        exists_user: User = await self.app.store.games.get_user_by_vk_id(user_id)
+        if not exists_user:
+            raw_users: [RawUser] = await self.app.store.vk_api.get_user_data([user_id])
+            list_user_model = self._cast_raw_user_to_model(raw_users)
+            await self.app.store.games.add_users(list_user_model)
+
+    async def _send_rules(self, peer_id: int, user_id: int, event_id: str):
+        message_text = "Первое правило бойцовского клуба."
+        await self._sending_to_callback(peer_id, user_id, message_text, event_id)
+
+    async def _user_answer(self, peer_id: int, user_id: int, user_answer: str):
+        current_user: User = await self.app.store.games.get_user_by_vk_id(user_id)
+        for correct_ans in self.games[peer_id].current_question.answers:
+            dst = distance(user_answer, correct_ans.title.lower())
+            # Если длина ответа от 3 до 6 символов и расстояние Левенштейна < 2
+            # Если длина ответа больше 6 символов и расстояние Левенштейна < 4
+            if (len(user_answer) > 6 and dst < 4) or (len(user_answer) <= 6 and dst < 2):
+                await self.app.store.games.save_user_answer(game_id=self.games[peer_id].game.id,
+                                                            user_id=current_user.id,
+                                                            answer_id=correct_ans.id,
+                                                            answer_score=correct_ans.score,
+                                                            )
+                self.games[peer_id].past_user_answers.add(user_answer)
+                message = f"Пользователь {current_user.first_name} {current_user.last_name}" \
+                          f" заработал {self._case_word(correct_ans.score)}."
+                await self._sending_to_chat(peer_id, message, KeyboardType.START.value)
+                break
+        # Если неверный ответ
+        else:
+            await self.app.store.games.save_user_answer(game_id=self.games[peer_id].game.id,
+                                                        user_id=current_user.id,
+                                                        answer_id=-1,
+                                                        answer_score=0)
+            failures = await self.app.store.games.get_user_failures(self.games[peer_id].game.id, current_user.id)
+            if failures == 5:
+                message = f"{current_user.first_name} {current_user.last_name} мы вас услышали."
+                self.games[peer_id].game_over_users.append(current_user.vk_id)
+            else:
+                message = f"Пользователь {current_user.first_name} {current_user.last_name} ответил неправильно." \
+                          f"<br>Это {failures} промах из 5."
+            await self._sending_to_chat(peer_id, message, KeyboardType.START.value)
+        # DEBUG print(f"Пользователь {update.object.user_id} написал {update.object.message}")
 
     @staticmethod
     async def _create_update_object(data: dict) -> Optional[Update]:
         # Новое сообщение
-        if data["type"] == "message_new":
+        if data["type"] == UpdateType.TEXT.value:
             update: Update = Update(
                 group_id=data["group_id"],
-                type=data["type"],
+                type=UpdateType.TEXT,
                 object=UpdateObject(
                     user_id=data["object"]["message"]["from_id"],
                     peer_id=data["object"]["message"]["peer_id"],
@@ -230,22 +191,22 @@ class BotManager:
                 )
             )
         # Новое событие
-        elif data["type"] == "message_event":
+        elif data["type"] == UpdateType.EVENT.value:
             update: Update = Update(
                 group_id=data["group_id"],
-                type=data["type"],
+                type=UpdateType.EVENT,
                 object=UpdateObject(
                     user_id=data["object"]["user_id"],
                     peer_id=data["object"]["peer_id"],
-                    message=data["object"]["payload"]["game"],
+                    payload=EventType(data["object"]["payload"]["game"]),
                     event_id=data["object"]["event_id"],
                 ),
             )
         # Новый пользователь
-        elif data["type"] == "group_join":
+        elif data["type"] == UpdateType.JOIN.value:
             update: Update = Update(
                 group_id=data["group_id"],
-                type=data["type"],
+                type=UpdateType.JOIN,
                 object=UpdateObject(
                     user_id=data["object"]["user_id"],
                     event_id=data["event_id"],
@@ -302,3 +263,4 @@ class BotManager:
         else:
             s = "ов"
         return f"{n} балл{s}"
+
