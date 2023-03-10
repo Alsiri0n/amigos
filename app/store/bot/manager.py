@@ -19,12 +19,16 @@ KEYBOARD_TYPE = {
     "default": "keyboard_default",
     "start": "keyboard_game",
 }
-EVENT_TYPE = {
+MESSAGE_TYPE = {
     "text": "message_new",
     "event": "message_event",
     "join": "group_join",
 }
-
+EVENT_TYPE = {
+    1: "rules",
+    2: "start",
+    3: "end",
+}
 
 class BotManager:
     def __init__(self, app: "Application"):
@@ -61,7 +65,7 @@ class BotManager:
     async def handle_updates_rabbit(self, response: dict):
         update: [Update] = await self._create_update_object(response)
         if update:
-            if update.type == EVENT_TYPE["event"] and update.object.message == "rules":
+            if update.type == MESSAGE_TYPE["event"] and update.object.message == EVENT_TYPE[1]:
                 message_text = "Первое правило бойцовского клуба."
                 await self._sending_to_callback(
                                                 update.object.peer_id,
@@ -69,7 +73,7 @@ class BotManager:
                                                 message_text,
                                                 update.object.event_id
                                             )
-            elif update.type == EVENT_TYPE["event"] and update.object.message == "start":
+            elif update.type == MESSAGE_TYPE["event"] and update.object.message == EVENT_TYPE[2]:
                 is_exists_game = await self.app.store.games.get_current_game(update.object.peer_id)
                 cur_user = await self.app.store.games.get_user_by_vk_id(update.object.user_id)
                 if is_exists_game:
@@ -98,7 +102,7 @@ class BotManager:
                         self.start_game(
                             self.current_game[update.object.peer_id]["game"]))
 
-            elif update.type == EVENT_TYPE["event"] and update.object.message == "end":
+            elif update.type == MESSAGE_TYPE["event"] and update.object.message == EVENT_TYPE[3]:
                 if self.current_game.get(update.object.peer_id):
                     self.game_task.cancel()
                     await self._end_game(self.current_game[update.object.peer_id]["game"],
@@ -111,14 +115,14 @@ class BotManager:
                                          user_id=update.object.user_id,
                                          event_id=update.object.event_id)
 
-            elif update.type == EVENT_TYPE["join"]:
+            elif update.type == MESSAGE_TYPE["join"]:
                 exists_user: User = await self.app.store.games.get_user_by_vk_id(update.object.user_id)
                 if not exists_user:
                     raw_users: [RawUser] = await self.app.store.vk_api.get_user_data([update.object.user_id])
                     list_user_model = self._cast_raw_user_to_model(raw_users)
                     await self.app.store.games.add_users(list_user_model)
             # Сообщение пользователя во время игры
-            elif update.type == EVENT_TYPE["text"] and self.current_game.get(update.object.peer_id):
+            elif update.type == MESSAGE_TYPE["text"] and self.current_game.get(update.object.peer_id):
                 # Проверяем что пользователь ещё не проиграл
                 if (update.object.user_id not in self.current_game[update.object.peer_id]["current_game_over_users"] and
                     self.current_game[update.object.peer_id].get("current_question")
@@ -164,7 +168,7 @@ class BotManager:
                             self.current_game[update.object.peer_id]["current_game_over_users"].append(current_user.vk_id)
 
                 print(f"Пользователь {update.object.user_id} написал {update.object.message}")
-            elif update.type == EVENT_TYPE["text"] and \
+            elif update.type == MESSAGE_TYPE["text"] and \
                     update.object.user_id == self.app.config.admin.vk_id and \
                     update.object.message == "!startbot42":
                 await self._sending_to_chat(update.object.peer_id, "Поехали", KEYBOARD_TYPE["default"])
