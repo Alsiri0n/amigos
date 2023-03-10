@@ -1,0 +1,75 @@
+version: "3.8"
+networks:
+  alsinet:
+    external: true
+services:
+  web:
+    image: alsiri0n/amigos:latest
+    container_name: amigos
+    restart: unless-stopped
+    ports:
+      - 1234:8080
+    depends_on:
+      postgres:
+        condition: service_started
+      rabbitmq:
+          condition: service_healthy
+    environment:
+      - SESSION_KEY=$SESSION_KEY
+      - ADMIN_EMAIL=$ADMIN_EMAIL
+      - ADMIN_PASSWORD=$ADMIN_PASSWORD
+      - ADMIN_VK_ID=$ADMIN_VK_ID
+      - DATABASE_HOST=$DATABASE_HOST
+      - DATABASE_PORT=$DATABASE_PORT
+      - DATABASE_USER=$DATABASE_USER
+      - DATABASE_PASSWORD=$DATABASE_PASSWORD
+      - DATABASE_NAME=$DATABASE_NAME
+      - BOT_TOKEN=$BOT_TOKEN
+      - BOT_GROUP_ID=$BOT_GROUP_ID
+      - RABBIT_HOST=$RABBIT_HOST
+      - RABBIT_PORT=$RABBIT_PORT
+      - RABBIT_USER=$RABBIT_USER
+      - RABBIT_PASSWORD=$RABBIT_PASSWORD
+      - RABBIT_VHOST=$RABBIT_VHOST
+      - RABBIT_QUEUE=$RABBIT_QUEUE
+    networks:
+      - alsinet
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=$DATABASE_USER
+      - POSTGRES_PASSWORD=$DATABASE_PASSWORD
+      - POSTGRES_DB=$DATABASE_NAME
+    volumes:
+      - ./sql:/var/lib/postgresql/data
+    # ports:
+    #   - 5432:5432
+    networks:
+      - alsinet
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq
+    ports:
+      # - 5672:5672
+      - 15672:15672
+#    For DEV and CI/CD can use env variables
+    environment:
+      - RABBITMQ_NODE_PORT=$RABBIT_PORT
+      - RABBITMQ_DEFAULT_USER=$RABBIT_USER
+      - RABBITMQ_DEFAULT_PASS=$RABBIT_PASSWORD
+      - RABBITMQ_DEFAULT_VHOST=$RABBIT_PATH
+#    For production recommended use config file
+#    volumes:
+#      - ./rabbit.conf:/etc/rabbitmq/conf.d/11-main.conf
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - alsinet

@@ -1,0 +1,3 @@
+default_user = guest
+default_pass = $tr0ngPa$$w0rd
+default_vhost = amigos

@@ -3,8 +3,9 @@ from marshmallow import Schema, fields
 
 class GameSchema(Schema):
     id = fields.Int(required=False)
-    started = fields.Bool(required=True)
-    questions = fields.Nested("QuestionSchema", many=True, required=True)
+    started_at = fields.DateTime(required=True)
+    ended_at = fields.DateTime(required=False)
+    # questions = fields.Nested("QuestionSchema", many=True, required=True)
 
 
 class QuestionSchema(Schema):
@@ -14,9 +15,10 @@ class QuestionSchema(Schema):
 
 
 class AnswerSchema(Schema):
+    id = fields.Int(required=False)
     title = fields.Str(required=True)
-    points = fields.Int(required=True)
-
+    score = fields.Int(required=True)
+    question_id = fields.Int(required=False)
 
 # class ThemeListSchema(Schema):
 #     themes = fields.Nested(ThemeSchema, many=True)
