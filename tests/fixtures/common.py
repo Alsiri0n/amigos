@@ -24,10 +24,12 @@ def event_loop():
 
 @pytest.fixture(scope="session")
 def server():
+    if os.path.dirname(os.path.dirname(__file__)) == "/home/runner/work/amigos/amigos":
+        _config_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "..", "..", ".env.ga")
+    else:
+        _config_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "..", "..", ".env")
     app = setup_app(
-        config_path=os.path.join(
-            os.path.abspath(os.path.dirname(__file__)), "..", ".env.ga"
-        )
+        config_path=_config_path
     )
     app.on_startup.clear()
     app.on_shutdown.clear()
