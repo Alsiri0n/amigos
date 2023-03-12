@@ -24,7 +24,6 @@ def event_loop():
 
 @pytest.fixture(scope="session")
 def server():
-    print("-------------------->" + os.path.dirname(os.path.dirname(__file__)))
     if os.path.dirname(os.path.dirname(__file__)) == "/home/runner/work/amigos/amigos/tests":
         _config_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "..", "..", ".env.ga")
     else:
