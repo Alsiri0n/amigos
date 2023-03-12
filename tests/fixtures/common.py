@@ -26,7 +26,7 @@ def event_loop():
 def server():
     app = setup_app(
         config_path=os.path.join(
-            os.path.abspath(os.path.dirname(__file__)), "..", ".env"
+            os.path.abspath(os.path.dirname(__file__)), "..", ".env.ga"
         )
     )
     app.on_startup.clear()
