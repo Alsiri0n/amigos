@@ -2,7 +2,6 @@ import typing
 import os
 from dataclasses import dataclass
 from dotenv import load_dotenv
-import yaml
 
 if typing.TYPE_CHECKING:
     from app.web.app import Application

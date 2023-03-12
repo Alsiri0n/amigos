@@ -53,9 +53,10 @@ class GameAccessor(BaseAccessor):
         async with self.app.database.session() as session:
             q = select(QuestionModel). \
                 where(QuestionModel.title == title). \
-                options(subqueryload(QuestionModel.answers))
+                options(subqueryload(QuestionModel.answers)). \
+                options(subqueryload(QuestionModel.road_map))
             result: Result = await session.execute(q)
-        question_model: QuestionModel = result.scalar()
+        question_model: QuestionModel = result.scalars().first()
         if question_model:
             return question_model.to_dc()
         return None
@@ -98,11 +99,18 @@ class GameAccessor(BaseAccessor):
                 answer_model = result.scalar()
                 if not answer_model:
                     answer_model_list: list[AnswerModel] = []
-                    for ans in answers:
-                        answer_model_list.append(
-                            AnswerModel(title=ans["title"],
-                                        score=ans["score"],
-                                        question_id=question_id))
+                    if isinstance(answers[0], Answer):
+                        for ans in answers:
+                            answer_model_list.append(
+                                AnswerModel(title=ans.title,
+                                            score=ans.score,
+                                            question_id=question_id))
+                    else:
+                        for ans in answers:
+                            answer_model_list.append(
+                                AnswerModel(title=ans["title"],
+                                            score=ans["score"],
+                                            question_id=question_id))
                 session.add_all(answer_model_list)
         return [answer.to_dc() for answer in answer_model_list]
 
@@ -183,8 +191,11 @@ class GameAccessor(BaseAccessor):
             await session.commit()
             if game:
                 return game.id
-            else:
+            elif game_model:
                 return game_model.id
+            else:
+                # Если был сбой и игра не создалась, но inline-кнопка всё равно горит красным
+                return -1
 
     async def save_user_answer(self, game_id: int, user_id: int, answer_id: int, answer_score: int = 0) -> None:
         async with self.app.database.session() as session:
