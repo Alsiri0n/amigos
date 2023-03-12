@@ -16,15 +16,11 @@ from alembic import context
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
-# database_url = str(URL.create(
-#     drivername="postgresql+asyncpg",
-#     username=os.getenv("DATABASE_USER"),
-#     password=os.getenv("DATABASE_PASSWORD"),
-#     host=os.getenv("DATABASE_HOST"),
-#     port=os.getenv("DATABASE_PORT"),
-#     database=os.getenv("DATABASE_NAME"),
-# ))
-config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
+print(os.path.dirname(os.path.dirname(__file__)))
+if os.path.dirname(os.path.dirname(__file__)) == "/home/runner/work/amigos/amigos/":
+    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "tests", ".env")
+else:
+    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
 load_dotenv(config_path)
 section = config.config_ini_section
 config.set_section_option(section, "DB_USER", os.getenv("DATABASE_USER"))
