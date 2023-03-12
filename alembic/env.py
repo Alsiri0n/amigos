@@ -17,6 +17,7 @@ from alembic import context
 # access to the values within the .ini file in use.
 config = context.config
 print("--------------------->" + os.path.dirname(os.path.dirname(__file__)))
+print("--------------------->" + os.path.dirname(__file__))
 if os.path.dirname(os.path.dirname(__file__)) == "/home/runner/work/amigos/amigos/":
     config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "tests", ".env")
 else:
