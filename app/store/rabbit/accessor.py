@@ -41,8 +41,10 @@ class RabbitAccessor(BaseAccessor):
             await self.app.store.bots_manager.handle_updates(json.loads(message.body.decode())[0])
 
     async def disconnect(self, app: "Application"):
-        await self.rabbit_channel.close()
-        await self.rabbit_connection.close()
+        if self.rabbit_channel:
+            await self.rabbit_channel.close()
+        if self.rabbit_connection:
+            await self.rabbit_connection.close()
 
     async def rabbit_produce(self, updates: list[Update]):
         await self.rabbit_channel.default_exchange.publish(

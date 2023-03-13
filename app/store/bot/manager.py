@@ -178,43 +178,44 @@ class BotManager:
 
     @staticmethod
     async def _create_update_object(data: dict) -> Optional[Update]:
-        # Новое сообщение
-        if data["type"] == UpdateType.TEXT.value:
-            update: Update = Update(
-                group_id=data["group_id"],
-                type=UpdateType.TEXT,
-                object=UpdateObject(
-                    user_id=data["object"]["message"]["from_id"],
-                    peer_id=data["object"]["message"]["peer_id"],
-                    event_id=data["object"]["message"]["id"],
-                    message=data["object"]["message"]["text"]
+        if data:
+            # Новое сообщение
+            if data["type"] == UpdateType.TEXT.value:
+                update: Update = Update(
+                    group_id=data["group_id"],
+                    type=UpdateType.TEXT,
+                    object=UpdateObject(
+                        user_id=data["object"]["message"]["from_id"],
+                        peer_id=data["object"]["message"]["peer_id"],
+                        event_id=data["object"]["message"]["id"],
+                        message=data["object"]["message"]["text"]
+                    )
                 )
-            )
-        # Новое событие
-        elif data["type"] == UpdateType.EVENT.value:
-            update: Update = Update(
-                group_id=data["group_id"],
-                type=UpdateType.EVENT,
-                object=UpdateObject(
-                    user_id=data["object"]["user_id"],
-                    peer_id=data["object"]["peer_id"],
-                    payload=EventType(data["object"]["payload"]["game"]),
-                    event_id=data["object"]["event_id"],
-                ),
-            )
-        # Новый пользователь
-        elif data["type"] == UpdateType.JOIN.value:
-            update: Update = Update(
-                group_id=data["group_id"],
-                type=UpdateType.JOIN,
-                object=UpdateObject(
-                    user_id=data["object"]["user_id"],
-                    event_id=data["event_id"],
-                ),
-            )
+            # Новое событие
+            elif data["type"] == UpdateType.EVENT.value:
+                update: Update = Update(
+                    group_id=data["group_id"],
+                    type=UpdateType.EVENT,
+                    object=UpdateObject(
+                        user_id=data["object"]["user_id"],
+                        peer_id=data["object"]["peer_id"],
+                        payload=EventType(data["object"]["payload"]["game"]),
+                        event_id=data["object"]["event_id"],
+                    ),
+                )
+            # Новый пользователь
+            elif data["type"] == UpdateType.JOIN.value:
+                update: Update = Update(
+                    group_id=data["group_id"],
+                    type=UpdateType.JOIN,
+                    object=UpdateObject(
+                        user_id=data["object"]["user_id"],
+                        event_id=data["event_id"],
+                    ),
+                )
+            return update
         else:
             return None
-        return update
 
     async def _sending_to_chat(self, peer_id: int, message: str, keyboard_type: str,):
         await self.app.store.vk_api.send_message(

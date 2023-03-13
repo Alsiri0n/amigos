@@ -11,11 +11,11 @@ if typing.TYPE_CHECKING:
 
 
 class AdminAccessor(BaseAccessor):
-    async def connect(self, app: "Application"):
-        self.app = app
-        await self.create_admin(self.app.config.admin.email,
-                                self.app.config.admin.password,
-                                self.app.config.admin.vk_id)
+    # async def connect(self, app: "Application"):
+    #     self.app = app
+    #     await self.create_admin(self.app.config.admin.email,
+    #                             self.app.config.admin.password,
+    #                             self.app.config.admin.vk_id)
 
     async def get_by_email(self, email: str) -> Admin | None:
         admin = None
@@ -23,7 +23,7 @@ class AdminAccessor(BaseAccessor):
             async with session.begin():
                 q = select(AdminModel).where(AdminModel.email == email)
             result = await session.execute(q)
-            admin_model = result.scalar()
+            admin_model = result.scalars().first()
             if admin_model:
                 admin = admin_model.to_dc()
             return admin
