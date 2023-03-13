@@ -68,6 +68,9 @@ class BotManager:
     async def start_button(self, peer_id: int, user_id: int, event_id: str):
         is_exists_game = await self.app.store.games.get_current_game(peer_id)
         cur_user = await self.app.store.games.get_user_by_vk_id(user_id)
+        if not cur_user:
+            await self._add_new_user(user_id)
+            cur_user = await self.app.store.games.get_user_by_vk_id(user_id)
         if is_exists_game:
             message_text = f"Игра уже была запущена."
             await self._sending_to_chat(peer_id, message_text, KeyboardType.START.value)
