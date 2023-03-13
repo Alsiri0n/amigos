@@ -82,6 +82,7 @@ class GameEntity:
     current_question: Question | None = None
     past_user_answers: set = field(default_factory=set)
     game_over_users: list = field(default_factory=list)
+    answered_questions: list[int] = field(default_factory=list)
 
 
 class GameModel(db):

@@ -107,6 +107,7 @@ class BotManager:
                 await self._sending_to_chat(game.peer_id, message, KeyboardType.START.value)
                 # Очищаем ответы пользователей для следующего раунда
                 self.games[game.peer_id].past_user_answers.clear()
+                self.games[game.peer_id].answered_questions.clear()
         else:
             await self._end_game(game, game.peer_id)
 
@@ -160,7 +161,15 @@ class BotManager:
                                                             )
                 self.games[peer_id].past_user_answers.add(user_answer)
                 message = f"Пользователь {current_user.first_name} {current_user.last_name}" \
-                          f" заработал {self._case_word(correct_ans.score)}."
+                          f" заработал {self._case_word(correct_ans.score)}.<br>"
+                self.games[peer_id].answered_questions.append(correct_ans.id)
+                for a_num, a in enumerate(self.games[peer_id].current_question.answers):
+                    if a.id in self.games[peer_id].answered_questions:
+                        message += f"<br>{a_num + 1}. {self.games[peer_id].current_question.answers[a_num].title} " \
+                               f"{self._case_word(self.games[peer_id].current_question.answers[a_num].score)} - " \
+                               f"{current_user.first_name} {current_user.last_name}"
+                    else:
+                        message += f"<br>{a_num + 1}. ??? ??"
                 await self._sending_to_chat(peer_id, message, KeyboardType.START.value)
                 break
         # Если неверный ответ

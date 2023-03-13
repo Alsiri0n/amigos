@@ -7,7 +7,7 @@ class KeyboardType(Enum):
     START = "keyboard_in_game"
 
 
-class UpdateType(Enum):
+class UpdateType(str, Enum):
     TEXT = "message_new"
     EVENT = "message_event"
     JOIN = "group_join"
@@ -17,6 +17,7 @@ class EventType(Enum):
     RULES = "rules"
     START = "start"
     FINISH = "end"
+    FIRST = '"command":"start"'
 
 @dataclass
 class UpdateObject:
