@@ -16,9 +16,10 @@ from alembic import context
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
-if os.path.dirname(os.path.dirname(__file__)) == "/home/runner/work/amigos/amigos":
-    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env.ga")
+if os.path.dirname(os.path.dirname(__file__)) != "/usr/src/app/amigos":
+    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
 else:
+    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env.ga")
     config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
 # print(f"{config_path=}")
 load_dotenv(config_path)
