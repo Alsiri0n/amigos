@@ -20,7 +20,6 @@ if os.path.dirname(os.path.dirname(__file__)) != "/usr/src/app/amigos":
     config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
 else:
     config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env.ga")
-    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
 # print(f"{config_path=}")
 load_dotenv(config_path)
 section = config.config_ini_section
