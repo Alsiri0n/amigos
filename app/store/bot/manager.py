@@ -37,6 +37,10 @@ class BotManager:
             new_users = [u for u in users_from_vk if u.id_ in id_need_to_add]
             list_user_model = self._cast_raw_user_to_model(new_users)
             await self.app.store.games.add_users(list_user_model)
+        is_game = await self.app.store.games.is_current_game(-1)
+        if is_game:
+            for game in is_game:
+                await self.start_button(peer_id=game.peer_id, user_id=self.app.config.admin.vk_id, is_new_game=False)
 
     async def handle_updates(self, response: dict):
         update: [Update] = await self._create_update_object(response)
@@ -65,16 +69,25 @@ class BotManager:
                     update.object.message == "!startbot42":
                 await self._sending_to_chat(update.object.peer_id, "Поехали", KeyboardType.DEFAULT.value)
 
-    async def start_button(self, peer_id: int, user_id: int, event_id: str):
-        is_exists_game = await self.app.store.games.get_current_game(peer_id)
+    async def start_button(self, peer_id: int, user_id: int, event_id: str = "-1", is_new_game: bool = True):
+        is_exists_game = await self.app.store.games.is_current_game(peer_id)
         cur_user = await self.app.store.games.get_user_by_vk_id(user_id)
         if not cur_user:
             await self._add_new_user(user_id)
             cur_user = await self.app.store.games.get_user_by_vk_id(user_id)
-        if is_exists_game:
+        if is_exists_game and is_new_game:
             message_text = f"Игра уже была запущена."
             await self._sending_to_chat(peer_id, message_text, KeyboardType.START.value)
             await self._sending_to_callback(peer_id, user_id, message_text, event_id)
+        elif not is_new_game:
+            self.games[peer_id] = GameEntity(
+                game=is_exists_game[0],
+                current_question=None,
+                past_user_answers=set(),
+                game_over_users=[])
+            message_text = f"Игра была перезапущена."
+            await self._sending_to_chat(peer_id, message_text, KeyboardType.START.value)
+            self.game_task = asyncio.create_task(self._game_play(self.games[peer_id].game))
         else:
             game: Game = await self.app.store.games.create_game(peer_id)
             self.games[peer_id] = GameEntity(
@@ -88,10 +101,11 @@ class BotManager:
             self.game_task = asyncio.create_task(self._game_play(self.games[peer_id].game))
 
     async def _game_play(self, game: Game):
-        for i, cur_round in enumerate(game.road_map):
+        start_round_num = sum([rounds.status for rounds in game.road_map]) + 1
+        for i, cur_round in enumerate(game.road_map, start_round_num):
             if cur_round.status is False:
                 message: str = f"{'='*43}<br>" \
-                               f"Вопрос №{i + 1}/4 будет задан через 5 секунд!<br>" \
+                               f"Вопрос №{i}/{len(game.road_map)} будет задан через 5 секунд!<br>" \
                                f"{'='*43}"
                 await self._sending_to_chat(game.peer_id, message, KeyboardType.START.value)
                 self.games[game.peer_id].current_question = await self.app.store.games.get_question_by_id(cur_round.question_id)

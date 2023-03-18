@@ -2,7 +2,7 @@ import random
 from typing import TYPE_CHECKING, Optional, Set
 from datetime import datetime
 
-from sqlalchemy import select, update, func, and_
+from sqlalchemy import select, update, func, and_, or_
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.engine import Result
 
@@ -167,7 +167,7 @@ class GameAccessor(BaseAccessor):
                                RoadmapModel.question_id == roadmap.question_id)). \
                     values(status=True)
             await session.execute(q)
-            # await session.commit()
+            await session.commit()
 
     async def end_game(self, peer_id: int, game: Game = None) -> int:
         async with self.app.database.session() as session:
@@ -247,22 +247,30 @@ class GameAccessor(BaseAccessor):
     async def get_user_failures(self, game_id: int, user_id: int) -> int:
         async with self.app.database.session() as session:
             q = select(StatisticModel). \
-                where(StatisticModel.game_id == game_id). \
-                where(StatisticModel.user_id == user_id)
+                where(and_(StatisticModel.game_id == game_id, StatisticModel.user_id == user_id))
             result: Result = await session.execute(q)
         statistics_model_list = result.scalar()
         return statistics_model_list.failures
 
     # Для проверки того, что игра не была запущена одновременно несколькими участниками
-    async def get_current_game(self, peer_id: int) -> bool:
+    async def is_current_game(self, peer_id: int) -> Optional[list[Game]]:
         async with self.app.database.session() as session:
-            q = select(GameModel). \
-                where(GameModel.peer_id == peer_id). \
-                where(GameModel.ended_at.is_(None))
+            if peer_id == -1:
+                q = select(GameModel). \
+                    where(GameModel.ended_at.is_(None)). \
+                    options(subqueryload(GameModel.statistic)). \
+                    options(subqueryload(GameModel.road_map)). \
+                    options(subqueryload(GameModel.game_answer))
+            else:
+                q = select(GameModel). \
+                    where(and_(GameModel.peer_id == peer_id, GameModel.ended_at.is_(None))). \
+                    options(subqueryload(GameModel.statistic)). \
+                    options(subqueryload(GameModel.road_map)). \
+                    options(subqueryload(GameModel.game_answer))
             result_game_ended: Result = await session.execute(q)
-        game_model: GameModel = result_game_ended.scalar()
+        game_model: GameModel = result_game_ended.scalars().all()
         if game_model:
-            return True
+            return [game.to_dc() for game in game_model]
         else:
             return False
 
@@ -279,6 +287,7 @@ class GameAccessor(BaseAccessor):
                                    StatisticModel.user_id == statistic_model.user_id)). \
                         values(points=statistic_model.points, failures=statistic_model.failures)
                     await session.execute(q)
+                    await session.commit()
                 else:
                     session.add(statistic_model)
             # await session.commit()

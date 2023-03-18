@@ -1,4 +1,4 @@
-aio-pika==9.0.4
+aio-pika==9.0.5
 aiormq==6.7.4
 aiohttp==3.8.4
 aiohttp-apispec==2.2.3
@@ -8,7 +8,7 @@ asyncpg==0.27.0
 cryptography==39.0.2
 levenshtein==0.20.9
 marshmallow==3.19.0
-SQLAlchemy==2.0.4
+SQLAlchemy==2.0.6
 pytest==7.2.2
 pytest-aiohttp==1.0.4
 pytest-asyncio==0.20.3
