@@ -4,7 +4,7 @@ aiohttp-apispec==2.2.3
 aiohttp-session==2.12.1
 alembic==1.18.4
 asyncpg==0.31.0
-cryptography==46.0.7
+cryptography==48.0.0
 Levenshtein==0.27.3
 marshmallow==4.3.0
 pytest==9.0.3

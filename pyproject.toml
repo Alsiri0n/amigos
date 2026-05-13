@@ -11,7 +11,7 @@ dependencies = [
     "aiohttp-session==2.12.1",
     "alembic==1.18.4",
     "asyncpg==0.31.0",
-    "cryptography==46.0.7",
+    "cryptography==48.0.0",
     "levenshtein==0.27.3",
     "marshmallow==4.3.0",
     "python-dotenv==1.2.2",
